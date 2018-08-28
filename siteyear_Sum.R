@@ -12,8 +12,10 @@
 # (i.e. the !Site_structure_template from the server)
 # NB: the script does not support multiyear processing
 
-# Load the package 
+# Load the packages 
 library(openeddy)
+library(openair)
+library(Hmisc)
 
 siteyear <- "KRP16" # Edit the site-year (included in folder and file names)
 Tstamp <- format(Sys.time(), "%Y-%m-%d") # Timestamp of the computation
@@ -75,6 +77,56 @@ pdf(paste(path_out, siteyear, "_parameter_estimates_", Tstamp, ".pdf",
           sep = ""),
     width = 11.00, height = 8.27)
 invisible(lapply(pars, plot_hh, x = site, pch = 20))
+dev.off()
+
+### Plot wind roses ============================================================
+
+wrose_all <- data.frame(ws = site$wind_speed, wd = site$wind_dir)
+wrose_all$time <- cut(site$PAR, c(-Inf, 10, Inf), 
+                      labels = c("nighttime", "daytime"))
+wrose_all$months <- ordered(month.name[as.POSIXlt(site$timestamp)$mon + 1], 
+                            month.name)
+wrose_all$stability <- cut2(site$zeta, g = 6)
+
+# Print all to pdf
+pdf(paste(path_out, siteyear, "_wind_roses_", Tstamp, ".pdf", sep = ""),
+    width = 11.00, height = 8.27)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd")]), ], 
+         angle = 22.5, paddle = FALSE, breaks = 5)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "time")]), ], 
+         type = "time", angle = 22.5, paddle = FALSE, breaks = 5)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "months")]), ], 
+         type = "months", angle = 45, paddle = FALSE, breaks = 5, 
+         grid.line = 10)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ], 
+         type = "stability", angle = 22.5, paddle = FALSE, 
+         breaks = 5, grid.line = 10, 
+         main = "Zeta parameter based stability classes")
+dev.off()
+
+# Print separately to png
+png(paste0(path_png, siteyear, "_wind_rose_all_", Tstamp, ".png"),
+    width = 3508, height = 2480, res = 400)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd")]), ], 
+         angle = 22.5, paddle = FALSE, breaks = 5)
+dev.off()
+png(paste0(path_png, siteyear, "_wind_rose_day-night_", Tstamp, ".png"),
+    width = 3508, height = 2480, res = 400)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "time")]), ], 
+         type = "time", angle = 22.5, paddle = FALSE, breaks = 5)
+dev.off()
+png(paste0(path_png, siteyear, "_wind_rose_months_", Tstamp, ".png"),
+    width = 3508, height = 2480, res = 400)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "months")]), ], 
+         type = "months", angle = 45, paddle = FALSE, breaks = 5, 
+         grid.line = 10)
+dev.off()
+png(paste0(path_png, siteyear, "_wind_rose_stability_", Tstamp, ".png"),
+    width = 3508, height = 2480, res = 400)
+windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ], 
+         type = "stability", angle = 22.5, paddle = FALSE, 
+         breaks = 5, grid.line = 10, 
+         main = "Zeta parameter based stability classes")
 dev.off()
 
 ### Prepare variables for summaries ============================================

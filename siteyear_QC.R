@@ -85,11 +85,10 @@ if (sum(dupl) > 0) message(paste("Duplicated columns",
                                  paste0(names[dupl], collapse = ", ")))
 
 # Correct column names
-names[names == "co2_flux"] <- "FCO2" # required by further functions
-names[names == "qc_co2_flux"] <- "qc_FCO2" # required by further functions
+names <- gsub("co2_flux", "NEE", names) # assumption: co2_flux = NEE
 names[names == "(z-d)/L"] <- "zeta"
 names <- gsub("\\*", "star", names) # ustar, Tstar
-names <- gsub("\\%", "perc", names) # fetch percentages
+names <- gsub("\\%", "perc", names) # signal contribution percentages
 (names <- gsub("\\-|\\/", "_", names)) # dash and slash changed to underscore
 
 # Update object site
@@ -117,7 +116,7 @@ sapply(site, class) # Are classes appropriate?
 # exactly as they are irrespective of timezone information of your computer 
 # system", i.e. use as is
 site$timestamp <- strptime_eddy(site$timestamp, "%Y-%m-%d %H:%M",
-                                center.by = -900)
+                                shift.by = -900)
 class(site$timestamp) # should be POSIXt class now
 head(site$timestamp) # check if converted and centered correctly
 
@@ -126,9 +125,9 @@ head(site$timestamp) # check if converted and centered correctly
 # Display variables that can help identify problems with instruments
 names <- c("u_rot", "v_rot", "w_unrot", "w_rot", "sonic_temperature", 
            "max_wind_speed",
-           "Tau", "ustar", "H", "LE", "FCO2", 
+           "Tau", "ustar", "H", "LE", "NEE", 
            "u_var", "v_var", "w_var", "ts_var", "h2o_var", "co2_var",
-           "rand_err_Tau", "rand_err_H", "rand_err_LE", "rand_err_co2_flux",
+           "rand_err_Tau", "rand_err_H", "rand_err_LE", "rand_err_NEE",
            "Tau_scf", "H_scf", "LE_scf", "co2_scf",
            "u_spikes", "v_spikes", "w_spikes", "ts_spikes", "co2_spikes", 
            "h2o_spikes",
@@ -146,11 +145,12 @@ names <- names[names %in% names(site)]
 
 # Edit ylim_list argument for plotted variables if needed
 plot_precheck <- function(x, name, ylim_list = list(
-  Tau = c(0, 2), H = c(-200, 800), LE = c(-200, 800), FCO2 = c(-100, 50),
+  Tau = c(0, 2), H = c(-200, 800), LE = c(-200, 800), NEE = c(-100, 50),
   LE_strg = c(-5, 5), x_peak = c(0, 100), x_70perc = c(0, 500), 
   ustar = c(0, 1))) {
   ylim <- ylim_list[[name]]
-  plot(x$timestamp, x[, name], ylim = ylim, type = "o", pch = 20, cex = 0.5, 
+  plot(x$timestamp, x[, name], ylim = ylim, 
+       pch = 20, cex = 0.5, col = adjustcolor('black', 0.5),
        xaxt = "n", xlab = "timestamp", ylab = name, main = name)
   r <- as.POSIXct(round(range(x$timestamp), "months"))
   axis.POSIXct(1, at = seq(r[1], r[2], by = "month"), format = "%b-%y")
@@ -232,10 +232,10 @@ invisible(lapply(wd_dep_names, function(x) print(q + aes_string(y = x))))
 dev.off()
 
 # Create the precheck plot (PC_plt) vector for simplified plotting:
-(PC_plt <- c(Tau  = "qc_Tau",
-             H    = "qc_H",
-             LE   = "qc_LE",
-             FCO2 = "qc_FCO2"))
+(PC_plt <- c(Tau = "qc_Tau",
+             H   = "qc_H",
+             LE  = "qc_LE",
+             NEE = "qc_NEE"))
 
 # Save the plots in Precheck folder
 for (i in names(PC_plt)) {
@@ -254,7 +254,7 @@ lapply(QC, table, useNA = "always")
 site[names(QC)] <- QC # Save the results to the main data frame
 
 # Create data frame with test names and specification of test additivity
-fluxes <- c("Tau", "H", "LE", "FCO2")
+fluxes <- c("Tau", "H", "LE", "NEE")
 qc_names <- c("qc_flux", "qc_instrum_abslim", "qc_instrum_spikesHF", 
               "qc_flux_missfrac", "qc_flux_scf", "qc_ALL_wresid")
 additive <- c(rep(FALSE, 5), TRUE) # Only the qc_ALL_wresid filter is additive
@@ -284,7 +284,7 @@ simplify_combn_QC <- function(x, list, flux, name_suffix) {
 # Combine existing tests/filters to produce preliminary flags:
 H_prelim <- simplify_combn_QC(site, prelim, "H", "prelim")
 LE_prelim <- simplify_combn_QC(site, prelim, "LE", "prelim")
-FCO2_prelim <- simplify_combn_QC(site, prelim, "FCO2", "prelim")
+NEE_prelim <- simplify_combn_QC(site, prelim, "NEE", "prelim")
 
 ### Quality checking - flux interdependency and composite flags ================
 
@@ -316,7 +316,7 @@ comp # check the list
 Tau_comp <- simplify_combn_QC(site, comp, "Tau", "composite")
 H_comp <- simplify_combn_QC(site, comp, "H", "composite")
 LE_comp <- simplify_combn_QC(site, comp, "LE", "composite")
-FCO2_comp <- simplify_combn_QC(site, comp, "FCO2", "composite")
+NEE_comp <- simplify_combn_QC(site, comp, "NEE", "composite")
 
 # Show effect of flux interdependency test on QC flags:
 # Interpretation:
@@ -325,33 +325,35 @@ FCO2_comp <- simplify_combn_QC(site, comp, "FCO2", "composite")
 # 2 shows how many flag 1 data were corrected to be flag 2,
 abs(table(H_comp) - table(H_prelim))
 abs(table(LE_comp) - table(LE_prelim)) # No difference for (en)closed IRGA
-abs(table(FCO2_comp) - table(FCO2_prelim))
+abs(table(NEE_comp) - table(NEE_prelim))
 
 # Save the computed composite flags:
 site$qc_Tau_composite <- Tau_comp
 site$qc_H_composite <- H_comp
 site$qc_LE_composite <- LE_comp
-site$qc_FCO2_composite <- FCO2_comp
+site$qc_NEE_composite <- NEE_comp
 
 ### Storage correction of fluxes ===============================================
 
-# Add storage to the flux (produces storage corrected flux; flux_stc or NEE)
-# - discrete approach (one point measurement) is enough for KRP
-site$H_stc <- add_st(site$H, "H_stc", site$H_strg)
-site$LE_stc <- add_st(site$LE, "LE_stc", site$LE_strg)
-site$NEE <- add_st(site$FCO2, "NEE", site$co2_strg)
+if (apply_storage) {
+  # Storage flux is added to the respective original flux
+  # - correction  overwrites the original values of respective variables 
+  site$H <- add_st(site$H, "H", site$H_strg)
+  site$LE <- add_st(site$LE, "LE", site$LE_strg)
+  site$NEE <- add_st(site$NEE, "NEE", site$co2_strg)
+}
 
 ### Low frequency flux despiking ===============================================
 
-# Done on storage corrected fluxes; not applied to Tau
+# Not applied to Tau
 plot(site$H, ylim = c(-200, 400))
-desp_H <- despikeLF(site, var = "H_stc", qc_flag = "qc_H_composite",
-                    name_out = "qc_H_stc_spikesLF", var_thr = c(-200, 800))
+desp_H <- despikeLF(site, var = "H", qc_flag = "qc_H_composite",
+                    name_out = "qc_H_spikesLF", var_thr = c(-200, 800))
 plot(site$LE, ylim = c(-200, 400))
-desp_LE <- despikeLF(site, var = "LE_stc", qc_flag = "qc_LE_composite",
-                     name_out = "qc_LE_stc_spikesLF", var_thr = c(-200, 800))
-plot(site$FCO2, ylim = c(-50, 50))
-desp_NEE <- despikeLF(site, var = "NEE", qc_flag = "qc_FCO2_composite",
+desp_LE <- despikeLF(site, var = "LE", qc_flag = "qc_LE_composite",
+                     name_out = "qc_LE_spikesLF", var_thr = c(-200, 800))
+plot(site$NEE, ylim = c(-50, 50))
+desp_NEE <- despikeLF(site, var = "NEE", qc_flag = "qc_NEE_composite",
                       "qc_NEE_spikesLF", var_thr = c(-100, 100))
 
 # Check the results
@@ -361,33 +363,35 @@ lapply(list(desp_H = desp_H, desp_LE = desp_LE, desp_NEE = desp_NEE),
        table, useNA = "a")
 
 # Save the results
-site$qc_H_stc_spikesLF  <- desp_H
-site$qc_LE_stc_spikesLF <- desp_LE
-site$qc_NEE_spikesLF    <- desp_NEE
+site$qc_H_spikesLF   <- desp_H
+site$qc_LE_spikesLF  <- desp_LE
+site$qc_NEE_spikesLF <- desp_NEE
 
 ### Filtering fluxes with outlying random error ================================
+
 # plot(site$rand_err_H)
 # err_H <- despikeLF(site, var = "rand_err_H", qc_flag = "qc_H_composite",
 #                    name_out = "qc_H_rand_err_spikesLF", var_thr = c(0, 50))
 # plot(site$rand_err_LE)
 # err_LE <- despikeLF(site, var = "rand_err_LE", qc_flag = "qc_LE_composite",
 #                     name_out = "qc_LE_rand_err_spikesLF", var_thr = c(0, 50))
-# plot(site$rand_err_co2_flux)
-# err_FCO2 <- despikeLF(site, var = "rand_err_co2_flux", 
-#                       qc_flag = "qc_FCO2_composite", 
-#                       name_out = "qc_FCO2_rand_err_spikesLF", 
+# plot(site$rand_err_NEE)
+# err_NEE <- despikeLF(site, var = "rand_err_NEE", 
+#                       qc_flag = "qc_NEE_composite", 
+#                       name_out = "qc_NEE_rand_err_spikesLF", 
 #                       var_thr = c(0, 20))
 # 
 # # Check the results
-# lapply(list(err_H = err_H, err_LE = err_LE, err_FCO2 = err_FCO2), 
+# lapply(list(err_H = err_H, err_LE = err_LE, err_NEE = err_NEE), 
 #        table, useNA = "a")
 # 
 # # Save the results
 # site$qc_H_rand_err_spikesLF    <- err_H
 # site$qc_LE_rand_err_spikesLF   <- err_LE
-# site$qc_FCO2_rand_err_spikesLF <- err_FCO2
+# site$qc_NEE_rand_err_spikesLF <- err_NEE
 
 ### Filtering fluxes with outlying variance ====================================
+
 # plot(site$ts_var, ylim = c(0, 10))
 # var_H <- despikeLF(site, var = "ts_var", qc_flag = "qc_H_composite",
 #                    name_out = "qc_H_ts_var_spikesLF", var_thr = c(0, 5))
@@ -395,41 +399,42 @@ site$qc_NEE_spikesLF    <- desp_NEE
 # var_LE <- despikeLF(site, var = "h2o_var", qc_flag = "qc_LE_composite",
 #                     name_out = "qc_LE_h2o_var_spikesLF", var_thr = c(0, 5))
 # plot(site$co2_var, ylim = c(0, 200))
-# var_FCO2 <- despikeLF(site, var = "co2_var", qc_flag = "qc_FCO2_composite", 
-#                       name_out = "qc_FCO2_co2_var_spikesLF", 
+# var_NEE <- despikeLF(site, var = "co2_var", qc_flag = "qc_NEE_composite", 
+#                       name_out = "qc_NEE_co2_var_spikesLF", 
 #                       var_thr = c(0, 200))
 # 
 # # Check the results
-# lapply(list(var_H = var_H, var_LE = var_LE, var_FCO2 = var_FCO2), 
+# lapply(list(var_H = var_H, var_LE = var_LE, var_NEE = var_NEE), 
 #        table, useNA = "a")
 # 
 # # Save the results
 # site$qc_H_ts_var_spikesLF  <- var_H
 # site$qc_LE_h2o_var_spikesLF <- var_LE
-# site$qc_FCO2_co2_var_spikesLF <- var_FCO2
+# site$qc_NEE_co2_var_spikesLF <- var_NEE
 
 ### Fetch filter ===============================================================
+
+# NB: qc_ALL_fetch70 is actually not applied to Tau
 FF <- fetch_filter(site, "x_70perc", "wind_dir", boundary, "qc_ALL_fetch70")
 table(FF, useNA = "always", dnn = "qc_ALL_fetch70")
 site$qc_ALL_fetch70 <- FF
-# NB: qc_ALL_fetch70 is actually not applied to Tau
 
 ### Combine QC flags used for gap-filling ======================================
 
 # Create a list for each flux with additional tests and their properties
-# add <- data.frame(H_stc = c("qc_H_stc_spikesLF", "qc_H_rand_err_spikesLF", 
+# add <- data.frame(H = c("qc_H_spikesLF", "qc_H_rand_err_spikesLF", 
 #                             "qc_H_ts_var_spikesLF", "qc_ALL_fetch70"),
-#                   LE_stc = c("qc_LE_stc_spikesLF", "qc_LE_rand_err_spikesLF", 
+#                   LE = c("qc_LE_spikesLF", "qc_LE_rand_err_spikesLF", 
 #                              "qc_LE_h2o_var_spikesLF", "qc_ALL_fetch70"),
-#                   NEE = c("qc_NEE_spikesLF", "qc_FCO2_rand_err_spikesLF", 
-#                           "qc_FCO2_co2_var_spikesLF", "qc_ALL_fetch70"),
+#                   NEE = c("qc_NEE_spikesLF", "qc_NEE_rand_err_spikesLF", 
+#                           "qc_NEE_co2_var_spikesLF", "qc_ALL_fetch70"),
 #                   stringsAsFactors = FALSE)
 # properties <- data.frame(additive = FALSE, na.as = c(rep(0, 3), NA))
 ####### add and properties above include rand_err and var despiking
 ####### if not required rewrite add and properties below
-add <- data.frame(H = c("qc_H_stc_spikesLF", "qc_ALL_fetch70"),
-                  LE = c("qc_LE_stc_spikesLF", "qc_ALL_fetch70"),
-                  FCO2 = c("qc_NEE_spikesLF", "qc_ALL_fetch70"),
+add <- data.frame(H = c("qc_H_spikesLF", "qc_ALL_fetch70"),
+                  LE = c("qc_LE_spikesLF", "qc_ALL_fetch70"),
+                  NEE = c("qc_NEE_spikesLF", "qc_ALL_fetch70"),
                   stringsAsFactors = FALSE)
 properties <- data.frame(additive = FALSE, na.as = c(0, NA))
 
@@ -437,12 +442,12 @@ add_list <- lapply(add, function(qc_names) cbind(qc_names, properties))
 
 # Create a complete list of tests within forGF scheme (does not apply for Tau)
 forGF <- lapply(1:3, function(x) rbind(comp[-1][[x]], add_list[[x]]))
-names(forGF) <- c("H_stc", "LE_stc", "NEE")
+names(forGF) <- c("H", "LE", "NEE")
 forGF # Check the list
 
 # Combine existing tests/filters to produce forGF flags:
-H_forGF <- simplify_combn_QC(site, forGF, "H_stc", "forGF")
-LE_forGF <- simplify_combn_QC(site, forGF, "LE_stc", "forGF")
+H_forGF <- simplify_combn_QC(site, forGF, "H", "forGF")
+LE_forGF <- simplify_combn_QC(site, forGF, "LE", "forGF")
 NEE_forGF <- simplify_combn_QC(site, forGF, "NEE", "forGF")
 
 # Show the difference between composite and forGF flags:
@@ -452,11 +457,11 @@ NEE_forGF <- simplify_combn_QC(site, forGF, "NEE", "forGF")
 # 2 shows how many flag 1 data were corrected to be flag 2,
 abs(table(H_forGF) - table(H_comp))
 abs(table(LE_forGF) - table(LE_comp))
-abs(table(NEE_forGF) - table(FCO2_comp))
+abs(table(NEE_forGF) - table(NEE_comp))
 
 # Save the computed forGF flags:
-site$qc_H_stc_forGF  <- H_forGF
-site$qc_LE_stc_forGF <- LE_forGF
+site$qc_H_forGF  <- H_forGF
+site$qc_LE_forGF <- LE_forGF
 site$qc_NEE_forGF    <- NEE_forGF
 
 ### QC summary and the graphical display of the results ========================
@@ -470,14 +475,14 @@ simplify_summary_QC <- function(x, df, cumul = FALSE, plot = FALSE,
 # Show the percantage of fluxes flagged by individual tests/filter and
 # their cumulative effect
 list_QC <- list(Tau = simplify_summary_QC(site, comp$Tau),
-                H = simplify_summary_QC(site, forGF$H_stc),
-                LE = simplify_summary_QC(site, forGF$LE_stc),
-                FCO2 = simplify_summary_QC(site, forGF$NEE),
+                H = simplify_summary_QC(site, forGF$H),
+                LE = simplify_summary_QC(site, forGF$LE),
+                NEE = simplify_summary_QC(site, forGF$NEE),
                 
                 Tau_cumul = simplify_summary_QC(site, comp$Tau, TRUE),
-                H_cumul = simplify_summary_QC(site, forGF$H_stc, TRUE),
-                LE_cumul = simplify_summary_QC(site, forGF$LE_stc, TRUE),
-                FCO2_cumul = simplify_summary_QC(site, forGF$NEE, TRUE))
+                H_cumul = simplify_summary_QC(site, forGF$H, TRUE),
+                LE_cumul = simplify_summary_QC(site, forGF$LE, TRUE),
+                NEE_cumul = simplify_summary_QC(site, forGF$NEE, TRUE))
                 
 # Save each element of list_QC to separate file in path_QC
 for (i in names(list_QC)) {
@@ -490,14 +495,14 @@ pdf(paste(path_QC, siteyear, "_QC_summary_", Tstamp, ".pdf", sep = ""),
     width = 11.00, height = 8.27)
 gridExtra::grid.arrange(
   simplify_summary_QC(site, comp$Tau, plot = TRUE, flux = "Tau"),
-  simplify_summary_QC(site, forGF$H_stc, plot = TRUE, flux = "H_stc"),
-  simplify_summary_QC(site, forGF$LE_stc, plot = TRUE, flux = "LE_stc"),
+  simplify_summary_QC(site, forGF$H, plot = TRUE, flux = "H"),
+  simplify_summary_QC(site, forGF$LE, plot = TRUE, flux = "LE"),
   simplify_summary_QC(site, forGF$NEE, plot = TRUE, flux = "NEE"),
   nrow = 2)
 gridExtra::grid.arrange(
   simplify_summary_QC(site, comp$Tau, TRUE, TRUE, flux = "Tau"),
-  simplify_summary_QC(site, forGF$H_stc, TRUE, TRUE, flux = "H_stc"),
-  simplify_summary_QC(site, forGF$LE_stc, TRUE, TRUE, flux = "LE_stc"),
+  simplify_summary_QC(site, forGF$H, TRUE, TRUE, flux = "H"),
+  simplify_summary_QC(site, forGF$LE, TRUE, TRUE, flux = "LE"),
   simplify_summary_QC(site, forGF$NEE, TRUE, TRUE, flux = "NEE"),
   nrow = 2)
 dev.off()
@@ -506,8 +511,8 @@ dev.off()
 
 # Select the desired QC flag for plotting
 QC_plt <- c(Tau    = "qc_Tau_composite",
-            H_stc  = "qc_H_stc_forGF",
-            LE_stc = "qc_LE_stc_forGF",
+            H  = "qc_H_forGF",
+            LE = "qc_LE_forGF",
             NEE    = "qc_NEE_forGF")
 
 # Save the plots that show the data with QC flag used for gap-filling
@@ -525,8 +530,8 @@ site$timestamp <- site$timestamp + 900
 
 # Remap variable names and filter columns needed for online gap-filling tool:
 OT_in <- set_OT_input(site,
-                      c("qc_NEE_forGF", "NEE", "qc_LE_stc_forGF", "LE_stc",
-                        "qc_H_stc_forGF", "H_stc", "GR", "Tair", "Tsoil", "RH",
+                      c("qc_NEE_forGF", "NEE", "qc_LE_forGF", "LE",
+                        "qc_H_forGF", "H", "GR", "Tair", "Tsoil", "RH",
                         "VPD", "qc_Tau_composite", "ustar"))
 
 # Save the standardized Online Tool/REddyProc input to '.txt' file:
@@ -544,13 +549,13 @@ write_eddy(site, paste(path, siteyear, "_forGF_QC_full_output_", Tstamp, ".csv",
 essentials <- c("timestamp", "DOY", "date", "time", "P", "GR", "Rn", "PAR", 
                 "Tair", "Tsoil", "RH", "VPD", "Tau", "qc_Tau", 
                 "qc_Tau_composite", "rand_err_Tau", "w_var", "u_var", 
-                "H", "qc_H", "qc_H_composite", "H_strg", "H_stc", 
-                "qc_H_stc_forGF", "rand_err_H", "ts_var", "LE", "ET", 
+                "H", "qc_H", "qc_H_composite", "H_strg", "H", 
+                "qc_H_forGF", "rand_err_H", "ts_var", "LE", "ET", 
                 "h2o_flux", "rand_err_h2o_flux", "h2o_strg", "h2o_v_adv", 
-                "qc_LE", "qc_LE_composite", "LE_strg", "LE_stc", 
-                "qc_LE_stc_forGF", "rand_err_LE", "h2o_var", "FCO2", 
-                "qc_FCO2", "qc_FCO2_composite", "co2_strg", "NEE", 
-                "qc_NEE_forGF", "rand_err_co2_flux", "co2_var", "co2_v_adv", 
+                "qc_LE", "qc_LE_composite", "LE_strg", "LE", 
+                "qc_LE_forGF", "rand_err_LE", "h2o_var", "NEE", 
+                "qc_NEE", "qc_NEE_composite", "co2_strg", "NEE", 
+                "qc_NEE_forGF", "rand_err_NEE", "co2_var", "co2_v_adv", 
                 "wind_speed", "wind_dir", "ustar", "L", "zeta", "bowen_ratio")
 
 # Show which names are not available in the object site
@@ -562,7 +567,7 @@ write_eddy(site[essentials], paste(GF_input, siteyear, "_forGF_QC_essentials_",
                                    Tstamp, ".csv", sep = ""))
 
 # Save settings used for the computations
-settings <- list(eddyczechr_pkg_version = pkg_version,
+settings <- list(openeddy_pkg_version = pkg_version,
                  siteyear = siteyear, 
                  QC_input = input,
                  QC_output_path = path,
@@ -572,7 +577,8 @@ settings <- list(eddyczechr_pkg_version = pkg_version,
                  wind_direction_dependency_path = path_wd_dep,
                  ROI_boundary_version = boundary_version,
                  boundary_used = site_abr,
-                 w_rot_correction = w_rot_correction)
+                 w_rot_correction = w_rot_correction,
+                 storage_correction = apply_storage)
 sink(paste(path, siteyear, '_settings_', Tstamp, '.txt', sep = ""))
 settings
 sink()

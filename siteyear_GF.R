@@ -282,7 +282,7 @@ sink()
 
 # Saving plots with gap-filled and flux partitioned data 
 ess_out$timestamp <- strptime_eddy(ess_out$timestamp, "%Y-%m-%d %H:%M",
-                                      center.by = -900)
+                                      shift.by = -900)
 head(ess_out$timestamp)
 names(ess_out)
 

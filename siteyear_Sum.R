@@ -30,7 +30,7 @@ path_png <- "./Level 3/Summary/REddyProc/png/"
 site <- read_eddy(path_in)
 str(site) # check if loaded properly
 site$timestamp <- strptime_eddy(site$timestamp, "%Y-%m-%d %H:%M", 
-                                center.by = -900)
+                                shift.by = -900)
 head(site$timestamp)
 # NB: extraction from site$date would be incorrect at midnight:
 site$date <- as.Date(site$timestamp) 

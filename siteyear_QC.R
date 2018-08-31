@@ -1,11 +1,11 @@
 ### Description ================================================================
 
-# This code primarily aims at data quality checking (QC) and preparation 
-# of input data for gap-filling. Data before and after QC are plotted 
-# and further statistics are computed. Storage correction and correction 
-# of rotated vertical wind speed (w_rot) is optional and overwrites 
-# the original values of respective variables. 
-# Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).
+#' This code primarily aims at data quality checking (QC) and preparation of
+#' input data for gap-filling. EddyPro and Meteo data inputs are merged and
+#' reformatted. Data before and after QC are plotted and further statistics are
+#' computed. Storage correction and correction of rotated vertical wind speed
+#' (w_rot) is optional and overwrites the original values of respective
+#' variables. Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).
 
 ### Loading the required packages ==============================================
 
@@ -16,7 +16,7 @@ library("ggplot2")
 library("gridExtra")
 library("reshape2")
 
-### Setting paths and loading inputs ===========================================
+### Setting common paths, arguments and loading fetch filter boundaries ========
 
 # Firstly manually set the desired working directory in RStudio interface
 # (typically it is the folder specifying the siteyear, e.g. BKF16)
@@ -49,17 +49,7 @@ apply_storage <- TRUE
 GF_input <- "./Level 2/Input for gap-filling/"
 
 # Set QC_summary path
-(path_QC <- paste(path, "QC_summary/", sep = "")) 
-
-# Load the input files. Edit the filenames:
-# - timestamp (combines date and time) and meteo data are expected
-input <- paste("./Level 1/Post-processing/EddyPro Output/",
-               "eddypro_KrP_full_output_2017-05-20T180735_adv_met.csv", 
-               sep = "")
-# -set correct skip parameter (number of lines above header in the input)
-# -set correct file encoding (e.g. fileEncoding = "UTF-8") 
-site <- read_eddy(input, skip = 1)
-str(site) # check if loaded properly
+(path_QC <- paste0(path, "QC_summary/"))
 
 # Set current version of fetch filter boundaries
 boundary_version <- "Fetch_filter_boundaries_20160206.csv"
@@ -70,19 +60,23 @@ site_abr <- "KRP"
 # Load the boundary used for fetch filter
 boundary <- read.csv(paste(path, boundary_version, sep = ""))[, site_abr]
 
-### Check the inputs and convert timestamp =====================================
+### Load EddyPro input and format it ===========================================
+
+# Edit the filename:
+EddyPro_input <- "./Level 1/Post-processing/EddyPro Output/eddypro_KrP_full_output_2017-05-20T180735_adv.csv"
+
+# Load the EddyPro file
+# -set correct skip parameter (number of lines above header in the input)
+# -set correct file encoding (e.g. fileEncoding = "UTF-8") 
+EP <- read_eddy(EddyPro_input, skip = 1, fileEncoding = "UTF-8")
+str(EP) # check if loaded properly
 
 # Load the original column names and check duplicates 
 # -set correct skip parameter (number of lines above header in the input)
-names <- read.csv(input, header = FALSE, nrows = 1, colClasses = "character",
-                  skip = 1)
-names <- as.character(names) # compare with names(site)
+names <- read.csv(EddyPro_input, header = FALSE, nrows = 1, 
+                  colClasses = "character", skip = 1)
+names <- as.character(names) # compare with names(EP)
 str(names) # check if loaded properly
-dupl <- duplicated(names)
-
-# Write a message if input file contains duplicated columns:
-if (sum(dupl) > 0) message(paste("Duplicated columns", 
-                                 paste0(names[dupl], collapse = ", ")))
 
 # Correct column names
 names <- gsub("co2_flux", "NEE", names) # assumption: co2_flux = NEE
@@ -91,34 +85,118 @@ names <- gsub("\\*", "star", names) # ustar, Tstar
 names <- gsub("\\%", "perc", names) # signal contribution percentages
 (names <- gsub("\\-|\\/", "_", names)) # dash and slash changed to underscore
 
-# Update object site
-names(site) <- names
-varnames(site) <- names
-str(site) # Are the names and attribute varnames edited correctly?
+# Update object EP
+names(EP) <- names
+varnames(EP) <- names
+str(EP) # Are the names and attribute varnames edited correctly?
 
 # Units corrections
-(units <- units(site, names = TRUE)) # Check the units
+(units <- units(EP, names = TRUE)) # Check the units
 (units <- gsub(c("\\[|\\]"), "", units)) # Remove the square brackets
 # -check whether µ was correctly interpreted due to the encoding issues
 
-# Update object site
-units(site) <- units
-units(site, names = TRUE) # Are units edited correctly?
+# Update object EP
+units(EP) <- units
+units(EP, names = TRUE) # Are units edited correctly?
+
+# Remove RH and VPD from EP to avoid duplication 
+# - eddy covariance estimates are less reliable than those of slow sensors
+EP[c("RH", "VPD")] <- NULL
+
+### Combine EddyPro timestamp from date and time ===============================
 
 # Check the loaded input
-head(site[, 1:10]) # Starting at the beginning of year? (e.g. 1.1.2016 0:30)
-tail(site[, 1:10]) # Ending correctly? (e.g. 1.1.2017 0:00)
-sapply(site, summary) # Variables in expected ranges?
-sapply(site, class) # Are classes appropriate?
+head(EP[, 1:10]) # Starting at the beginning of year? (e.g. 1.1.2016 0:30)
+tail(EP[, 1:10]) # Ending correctly? (e.g. 1.1.2017 0:00)
 
-# Convert timestamp to POSIXct format and center it:
+# Create timestamp, convert it to POSIXct format and center it
 # Note: use GMT which just means "don’t modify times and dates – just use them
 # exactly as they are irrespective of timezone information of your computer 
 # system", i.e. use as is
-site$timestamp <- strptime_eddy(site$timestamp, "%Y-%m-%d %H:%M",
-                                shift.by = -900)
-class(site$timestamp) # should be POSIXt class now
-head(site$timestamp) # check if converted and centered correctly
+timestamp <- paste(EP$date, EP$time)
+timestamp <- strptime_eddy(timestamp, "%Y-%m-%d %H:%M", shift.by = -900)
+
+# Combine timestamp with EP
+EP <- cbind(timestamp, EP)
+class(EP$timestamp) # should be POSIXt class now
+head(EP$timestamp) # check if converted and centered correctly
+
+### Load and format Meteo data =================================================
+
+# Edit the filename
+Meteo_input <- "./Level 1/Post-processing/EddyPro Output/Meteo_KRP16.csv"
+
+# Load the Meteo file 
+M <- read_eddy(Meteo_input, skip = 10, sep = ";")
+str(M) # check if units loaded properly, names are incorrect
+
+# Correct column names
+M_names <- read.csv2(Meteo_input, header = FALSE, nrows = 1, 
+                    colClasses = "character", skip = 9)
+(M_names <- as.character(M_names)) # compare with names(M)
+M_names_orig <- M_names # keep for documentation
+(M_names <- gsub("\\/", "_", M_names)) # slash changed to underscore
+
+# - link variable names from Meteo database with those required by scripts
+DTB_varnames <- data.frame(timestamp = "date", P = "sumP", GR = "GR", Rn = "Rn", 
+                           PAR = "PAR", Tair = "Ta", Tsoil = "Ts", RH = "RH", 
+                           VPD = "VPD", stringsAsFactors = FALSE)
+qc_vars <- grep("qcode", M_names)
+for (i in names(DTB_varnames)) {
+  M_names[grep(DTB_varnames[i], M_names)] <- i
+}
+
+# - remove other columns than those required
+M_names_filter <- grep(paste(names(DTB_varnames), collapse = "|"), M_names)
+M_names <- M_names[M_names_filter] 
+M_names_orig <- M_names_orig[M_names_filter] 
+M <- M[M_names_filter]
+(M_names[qc_vars] <- paste0("qc_", M_names[qc_vars]))
+
+# Update Meteo (var)names
+names(M) <- M_names
+varnames(M) <- M_names
+
+# Units corrections
+M_units <- units(M)
+M_units <- gsub("\\*", "\\+1", M_units)
+M_units <- gsub("st. ", "deg", M_units)
+
+# Update Meteo units
+units(M) <- M_units
+
+# Convert timestamp to POSIXct format and center it
+head(M$timestamp) # Starting at the beginning of year? (e.g. 1.1.2016 0:30:00)
+tail(M$timestamp) # Ending correctly? (e.g. 1.1.2017 0:00:00)
+M$timestamp <- strptime_eddy(M$timestamp, "%d.%m.%Y %H:%M", shift.by = -900)
+
+# Merge Meteo and EddyPro inputs and save it with documentation ================
+
+site <- merge(M, EP, by = "timestamp", all.x = TRUE)
+units(site) <- c(units(M), units(EP[-1]))
+varnames(site) <- c(varnames(M), varnames(EP[-1]))
+save_site <- site
+
+# Correct timestamp shift to its original state for saving
+save_site$timestamp <- save_site$timestamp + 900 
+
+# Change the timestamp formatting to its original state for saving
+save_site$timestamp <- format(save_site$timestamp, format = "%Y-%m-%d %H:%M", 
+                              tz = "GMT")
+
+# Save the merged Meteo and EddyPro inputs with documentation
+write_eddy(save_site, gsub("\\.csv", "_met.csv", EddyPro_input))
+rm(save_site)
+EP_doc <- readLines(gsub("\\.csv", ".txt", EddyPro_input), warn = FALSE)
+docu <- c(paste0(Tstamp, ":"), 
+          paste("Merged", basename(EddyPro_input), "and", basename(Meteo_input)),
+          "Duplicated EddyPro columns RH and VPD were removed",
+          "",
+          "Variables from meteo database remapped to:",
+          paste(M_names_orig, M_names, sep = " = ", collapse = "\n"), 
+          "")
+writeLines(c(docu, EP_doc), 
+           gsub("\\.csv", "_met.txt", EddyPro_input), sep = "\n")
 
 ### Visual precheck ============================================================
 
@@ -569,7 +647,7 @@ write_eddy(site[essentials], paste(GF_input, siteyear, "_forGF_QC_essentials_",
 # Save settings used for the computations
 settings <- list(openeddy_pkg_version = pkg_version,
                  siteyear = siteyear, 
-                 QC_input = input,
+                 QC_input = EddyPro_input,
                  QC_output_path = path,
                  precheck_path = path_precheck,
                  QC_summary_path = path_QC,

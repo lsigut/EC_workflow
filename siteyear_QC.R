@@ -2,10 +2,12 @@
 
 #' This code primarily aims at data quality checking (QC) and preparation of
 #' input data for gap-filling. EddyPro and Meteo data inputs are merged and
-#' reformatted. Data before and after QC are plotted and further statistics are
-#' computed. Storage correction and correction of rotated vertical wind speed
-#' (w_rot) is optional and overwrites the original values of respective
-#' variables. Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).
+#' reformatted. If Meteo contains replicates of the same variable, mean of all
+#' replicates and their QC is returned. Data before and after QC are plotted and
+#' further statistics are computed. Storage correction and correction of rotated
+#' vertical wind speed (w_rot) is optional and overwrites the original values of
+#' respective variables. Code developed by Ladislav Šigut
+#' (sigut.l@czechglobe.cz).
 
 ### Loading the required packages ==============================================
 
@@ -134,41 +136,55 @@ str(M) # check if units loaded properly, names are incorrect
 M_names <- read.csv2(Meteo_input, header = FALSE, nrows = 1, 
                     colClasses = "character", skip = 9)
 (M_names <- as.character(M_names)) # compare with names(M)
-M_names_orig <- M_names # keep for documentation
-(M_names <- gsub("\\/", "_", M_names)) # slash changed to underscore
+varnames(M) <- M_names # keep for documentation
+(names(M) <- gsub("\\/", "_", M_names)) # slash changed to underscore
 
 # - link variable names from Meteo database with those required by scripts
 DTB_varnames <- data.frame(timestamp = "date", P = "sumP", GR = "GR", Rn = "Rn", 
                            PAR = "PAR", Tair = "Ta", Tsoil = "Ts", RH = "RH", 
                            VPD = "VPD", stringsAsFactors = FALSE)
-qc_vars <- grep("qcode", M_names)
 for (i in names(DTB_varnames)) {
-  M_names[grep(DTB_varnames[i], M_names)] <- i
+  qc_index <- seq_along(names(M)) %in% grep("qcode", names(M))
+  index <- seq_along(names(M)) %in% grep(DTB_varnames[i], names(M))
+  if (sum(index) > 2) {
+    first <- which(!qc_index & index)[1]
+    first_qc <- which(qc_index & index)[1]
+    temp <- rowMeans(M[!qc_index & index], na.rm = TRUE)
+    varnames(temp) <- 
+      paste0("mean(", 
+             paste(varnames(M[!qc_index & index]), collapse = ", "), 
+             ", na.rm = TRUE)")
+    units(temp) <- units(M[first])
+    M[first] <- temp
+    temp_qc <- rowMeans(M[qc_index & index], na.rm = TRUE)
+    varnames(temp_qc) <- 
+      paste0("mean(", 
+             paste(varnames(M[qc_index & index]), collapse = ", "), 
+             ", na.rm = TRUE)")
+    units(temp_qc) <- units(M[first_qc])
+    M[first_qc] <- temp_qc
+    names(M)[first] <- i
+    names(M)[first_qc] <- paste0("qc_", i)
+    M[c(which(!qc_index & index)[-1], which(qc_index & index)[-1])] <- NULL
+  } else {
+    names(M)[index] <- i
+    names(M)[index & qc_index] <- paste0("qc_", i)
+  }
 }
 
 # - remove other columns than those required
-M_names_filter <- grep(paste(names(DTB_varnames), collapse = "|"), M_names)
-M_names <- M_names[M_names_filter] 
-M_names_orig <- M_names_orig[M_names_filter] 
+M_names_filter <- grep(paste(names(DTB_varnames), collapse = "|"), names(M))
 M <- M[M_names_filter]
-(M_names[qc_vars] <- paste0("qc_", M_names[qc_vars]))
 
-# Update Meteo (var)names
-names(M) <- M_names
-varnames(M) <- M_names
-
-# Units corrections
-M_units <- units(M)
-M_units <- gsub("\\*", "\\+1", M_units)
-M_units <- gsub("st. ", "deg", M_units)
-
-# Update Meteo units
-units(M) <- M_units
+# Correct units
+units(M) <- gsub("st. ", "deg", units(M))
 
 # Convert timestamp to POSIXct format and center it
 head(M$timestamp) # Starting at the beginning of year? (e.g. 1.1.2016 0:30:00)
 tail(M$timestamp) # Ending correctly? (e.g. 1.1.2017 0:00:00)
+M_vars <- varnames(M)
 M$timestamp <- strptime_eddy(M$timestamp, "%d.%m.%Y %H:%M", shift.by = -900)
+varnames(M) <- M_vars
 
 # Merge Meteo and EddyPro inputs and save it with documentation ================
 
@@ -189,11 +205,11 @@ write_eddy(save_site, gsub("\\.csv", "_met.csv", EddyPro_input))
 rm(save_site)
 EP_doc <- readLines(gsub("\\.csv", ".txt", EddyPro_input), warn = FALSE)
 docu <- c(paste0(Tstamp, ":"), 
-          paste("Merged", basename(EddyPro_input), "and", basename(Meteo_input)),
+          paste("Merged", basename(Meteo_input), "and", basename(EddyPro_input)),
           "Duplicated EddyPro columns RH and VPD were removed",
           "",
           "Variables from meteo database remapped to:",
-          paste(M_names_orig, M_names, sep = " = ", collapse = "\n"), 
+          paste(names(M), varnames(M), sep = " = ", collapse = "\n"), 
           "")
 writeLines(c(docu, EP_doc), 
            gsub("\\.csv", "_met.txt", EddyPro_input), sep = "\n")
@@ -540,7 +556,7 @@ abs(table(NEE_forGF) - table(NEE_comp))
 # Save the computed forGF flags:
 site$qc_H_forGF  <- H_forGF
 site$qc_LE_forGF <- LE_forGF
-site$qc_NEE_forGF    <- NEE_forGF
+site$qc_NEE_forGF <- NEE_forGF
 
 ### QC summary and the graphical display of the results ========================
 
@@ -588,10 +604,10 @@ dev.off()
 ### Quality checked data plotting ==============================================
 
 # Select the desired QC flag for plotting
-QC_plt <- c(Tau    = "qc_Tau_composite",
-            H  = "qc_H_forGF",
-            LE = "qc_LE_forGF",
-            NEE    = "qc_NEE_forGF")
+QC_plt <- c(Tau = "qc_Tau_composite",
+            H   = "qc_H_forGF",
+            LE  = "qc_LE_forGF",
+            NEE = "qc_NEE_forGF")
 
 # Save the plots that show the data with QC flag used for gap-filling
 for (i in names(QC_plt)) {
@@ -647,7 +663,8 @@ write_eddy(site[essentials], paste(GF_input, siteyear, "_forGF_QC_essentials_",
 # Save settings used for the computations
 settings <- list(openeddy_pkg_version = pkg_version,
                  siteyear = siteyear, 
-                 QC_input = EddyPro_input,
+                 EddyPro_input = EddyPro_input,
+                 Meteo_input = Meteo_input,
                  QC_output_path = path,
                  precheck_path = path_precheck,
                  QC_summary_path = path_QC,

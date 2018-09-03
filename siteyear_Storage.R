@@ -1,8 +1,7 @@
 ### Description ================================================================
 
-# This code primarily aims to plot average daily courses of storage fluxes
-# for individual months.
-# Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).  
+#' This code primarily aims to plot average daily courses of storage fluxes for
+#' individual months. Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).
 
 ### Loading the required packages ==================================
 
@@ -27,8 +26,7 @@ Tstamp <- format(Sys.time(), "%Y-%m-%d") # Timestamp of the computation
 
 # Load the input files. Edit the filenames:
 # - timestamp (combines date and time) and meteo data are expected
-input <- paste0("./Level 2/Input for gap-filling/",
-                "KRP16_forGF_QC_essentials_2018-08-28.csv")
+input <- "./Level 2/Input for gap-filling/KRP16_forGF_QC_essentials_2018-09-03.csv"
 # -set correct skip parameter (number of lines above header in the input)
 # -set correct file encoding (e.g. fileEncoding = "UTF-8") 
 site <- read_eddy(input)
@@ -53,5 +51,5 @@ for (Var in strg) {
   site_R5$sPlotDiurnalCycle(Var, Dir.s = path, Format.s = 'png')
 }
 
-
+# EOF
 

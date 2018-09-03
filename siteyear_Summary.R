@@ -1,8 +1,8 @@
 ### Description ================================================================
 
-# This code primarily aims to produce the summary of processed data
-# at different timescales (daily, weekly, monthly, yearly) and to plot them. 
-# Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).  
+#' This code primarily aims to produce the summary of processed data
+#' at different timescales (daily, weekly, monthly, yearly) and to plot them. 
+#' Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).  
 
 ### Setting paths and loading inputs ===========================================
 
@@ -22,7 +22,7 @@ Tstamp <- format(Sys.time(), "%Y-%m-%d") # Timestamp of the computation
 # (will be included in file names)
 
 # Input and output path for summary (Level 3 data):
-path_in <- "./Level 3/Gap-filling/REddyProc/KRP16_GF_essentials_2018-08-20.csv"
+path_in <- "./Level 3/Gap-filling/REddyProc/KRP16_GF_essentials_2018-09-03.csv"
 path_out <- "./Level 3/Summary/REddyProc/"
 path_png <- "./Level 3/Summary/REddyProc/png/"
 
@@ -143,33 +143,43 @@ site[GPP][sign_cor] <- -site[GPP][sign_cor]
 # http://alexis.czechglobe.cz/projects/vt04/knowledgebase/articles/10
 # - from umol+1s-1m-2 to MJ+1hh-1m-2 (hh = half-hour)
 site$PAR <- site$PAR * 1800e-6 / 4.57 # 4.57 Thimijan and Heins (1983)
-units(site$PAR) <- "MJ+1hh-1m-2"
+openeddy::units(site$PAR) <- "MJ+1hh-1m-2"
 # - from W m-2 to MJ+1hh-1m-2 (hh = half-hour)
 energy <- c("GR", "Rg_fsd", "Rn", "H_f", "H_fsd", "LE_f", "LE_fsd")
 site[energy] <- lapply(site[energy], function(x) x * 1800e-6)
-units(site[energy]) <- rep("MJ+1hh-1m-2", length(energy))
+openeddy::units(site[energy]) <- rep("MJ+1hh-1m-2", length(energy))
 # - from umol+1s-1m-2 to g(C)+1hh-1m-2
 site[carbon] <- lapply(site[carbon], function(x) x * 0.0216)
-units(site[carbon]) <- rep("g(C)+1hh-1m-2", length(carbon))
+openeddy::units(site[carbon]) <- rep("g(C)+1hh-1m-2", length(carbon))
+
+# Rename relevant NEE variables to NEP and change sign
+NEE_cols <- names(site) %in% grep("NEE", c(sum, err_agg), value = TRUE)
+names(site)[NEE_cols] <- gsub("NEE", "NEP", names(site)[NEE_cols])
+sum <- gsub("NEE", "NEP", sum)
+
+# - SD is aggregated in g(C)m-2hh-1, thus renamed to NEP, but stays positive
+nonSD_cols <- names(site) %in% grep("NEP", sum, value = TRUE)
+site[nonSD_cols] <- -site[nonSD_cols] 
+err_agg <- gsub("NEE", "NEP", err_agg)
 
 ### Daily summary ==============================================================
 
 # Compute daily means
 d_mean <- aggregate(site[mean], list(day = site$date), mean)
-units(d_mean) <- c("-", units(site[mean]))
+openeddy::units(d_mean) <- c("-", openeddy::units(site[mean]))
 
 # Compute daily sums
 d_sum <- aggregate(site[sum], list(day = site$date), sum)
-d_sum_units <- units(site[sum])
+d_sum_units <- openeddy::units(site[sum])
 d_sum_units <- gsub("hh", "day", d_sum_units)
-units(d_sum) <- c("-", d_sum_units)
+openeddy::units(d_sum) <- c("-", d_sum_units)
 
 # Aggregate SD 'in quadrature' for variables gap-filled by look-up table
 d_sd <- aggregate(site[err_agg], list(day = site$date), 
                   function(x) sqrt(sum(x^2)))
-d_sd_units <- units(site[err_agg])
+d_sd_units <- openeddy::units(site[err_agg])
 d_sd_units <- gsub("hh", "day", d_sd_units)
-units(d_sd) <- c("-", d_sd_units)
+openeddy::units(d_sd) <- c("-", d_sd_units)
 
 # Compute relative error of bootstrapped variables
 estim_err <- function(x, names) {
@@ -178,12 +188,12 @@ estim_err <- function(x, names) {
   out <- as.data.frame(lapply(l, function(x) apply(x, 1, fun)))
   names(out) <- sapply(names[, 1], function(x) sub("_U05", "", x))
   names(out) <- paste0("rel_err_", names(out))
-  units(out) <- rep("%", ncol(out))
+  openeddy::units(out) <- rep("%", ncol(out))
   return(out)
 }
-xn <- data.frame(U05 = grep("(NEE|GPP|Reco).*U05", sum, value = TRUE),
-                 U50 = grep("(NEE|GPP|Reco).*U50", sum, value = TRUE),
-                 U95 = grep("(NEE|GPP|Reco).*U95", sum, value = TRUE),
+xn <- data.frame(U05 = grep("(NEP|GPP|Reco).*U05", sum, value = TRUE),
+                 U50 = grep("(NEP|GPP|Reco).*U50", sum, value = TRUE),
+                 U95 = grep("(NEP|GPP|Reco).*U95", sum, value = TRUE),
                  stringsAsFactors = FALSE)
 d_rel_err <- estim_err(d_sum, xn)
 
@@ -193,7 +203,7 @@ d_pars$bowen_ratio_f <- d_sum$H_f / d_sum$LE_f
 d_pars$evaporative_fraction <- d_sum$LE_f / (d_sum$LE_f + d_sum$H_f)
 d_pars$closure_fraction <- (d_sum$LE_f + d_sum$H_f) / d_sum$Rn
 d_pars$CUP <- FALSE
-d_pars$CUP[d_sum$NEE_uStar_f < 0] <- TRUE
+d_pars$CUP[d_sum$NEP_uStar_f > 0] <- TRUE
 d_pars$GSL_method1 <- FALSE
 d_pars$GSL_method1[d_mean$Tair > 5] <- TRUE
 
@@ -208,20 +218,20 @@ weeks <- factor(weeks, levels = unique(weeks))
 
 # Compute weekly means
 w_mean <- aggregate(site[mean], list(week = weeks), mean)
-units(w_mean) <- c("-", units(site[mean]))
+openeddy::units(w_mean) <- c("-", openeddy::units(site[mean]))
 
 # Compute weekly sums
 w_sum <- aggregate(site[sum], list(week = weeks), sum)
-w_sum_units <- units(site[sum])
+w_sum_units <- openeddy::units(site[sum])
 w_sum_units <- gsub("hh", "week", w_sum_units)
-units(w_sum) <- c("-", w_sum_units)
+openeddy::units(w_sum) <- c("-", w_sum_units)
 
 # Aggregate SD 'in quadrature' for variables gap-filled by look-up table
 w_sd <- aggregate(site[err_agg], list(week = weeks), 
                   function(x) sqrt(sum(x^2)))
-w_sd_units <- units(site[err_agg])
+w_sd_units <- openeddy::units(site[err_agg])
 w_sd_units <- gsub("hh", "week", w_sd_units)
-units(w_sd) <- c("-", w_sd_units)
+openeddy::units(w_sd) <- c("-", w_sd_units)
 
 # Compute relative error of bootstrapped variables
 w_rel_err <- estim_err(w_sum, xn) 
@@ -252,20 +262,20 @@ months <- factor(months, levels = unique(months))
 
 # Compute monthly means
 m_mean <- aggregate(site[mean], list(month = months), mean)
-units(m_mean) <- c("-", units(site[mean]))
+openeddy::units(m_mean) <- c("-", openeddy::units(site[mean]))
 
 # Compute monthly sums
 m_sum <- aggregate(site[sum], list(month = months), sum)
-m_sum_units <- units(site[sum])
+m_sum_units <- openeddy::units(site[sum])
 m_sum_units <- gsub("hh", "month", m_sum_units)
-units(m_sum) <- c("-", m_sum_units)
+openeddy::units(m_sum) <- c("-", m_sum_units)
 
 # Aggregate SD 'in quadrature' for variables gap-filled by look-up table
 m_sd <- aggregate(site[err_agg], list(month = months), 
                   function(x) sqrt(sum(x^2)))
-m_sd_units <- units(site[err_agg])
+m_sd_units <- openeddy::units(site[err_agg])
 m_sd_units <- gsub("hh", "month", m_sd_units)
-units(m_sd) <- c("-", m_sd_units)
+openeddy::units(m_sd) <- c("-", m_sd_units)
 
 # Compute relative error of bootstrapped variables
 m_rel_err <- estim_err(m_sum, xn) 
@@ -295,20 +305,20 @@ years <- as.numeric(strftime(site$date, format = "%Y"))
 
 # Compute yearly means
 y_mean <- aggregate(site[mean], list(year = years), mean)
-units(y_mean) <- c("-", units(site[mean]))
+openeddy::units(y_mean) <- c("-", openeddy::units(site[mean]))
 
 # Compute yearly sums
 y_sum <- aggregate(site[sum], list(year = years), sum)
-y_sum_units <- units(site[sum])
+y_sum_units <- openeddy::units(site[sum])
 y_sum_units <- gsub("hh", "year", y_sum_units)
-units(y_sum) <- c("-", y_sum_units)
+openeddy::units(y_sum) <- c("-", y_sum_units)
 
 # Aggregate SD 'in quadrature' for variables gap-filled by look-up table
 y_sd <- aggregate(site[err_agg], list(year = years), 
                   function(x) sqrt(sum(x^2)))
-y_sd_units <- units(site[err_agg])
+y_sd_units <- openeddy::units(site[err_agg])
 y_sd_units <- gsub("hh", "year", y_sd_units)
-units(y_sd) <- c("-", y_sd_units)
+openeddy::units(y_sd) <- c("-", y_sd_units)
 
 # Compute relative error of bootstrapped variables
 y_rel_err <- estim_err(y_sum, xn) 
@@ -376,7 +386,7 @@ if (any(is.na(daily["Tair"]))) {
 }  
 y_pars$GS_start_method3 <- GS_start
 y_pars$GS_end_method3 <- GS_end
-y_pars$GSL_method3 <- as.numeric(GS_end-GS_start)
+y_pars$GSL_method3 <- as.numeric(GS_end - GS_start)
 
 # Compute number of days within interval
 y_days <- aggregate(daily$day, list(year = years_d), length)
@@ -408,7 +418,7 @@ plot_summary <- function(x, interval = c("daily", "weekly", "monthly")) {
                },
                ylim = if (i == "closure_fraction") c(0, 1) else NULL,
                xlab = paste(interval, "timescale"),
-               ylab = paste(i, " [", units(x[i]), "]", sep = ""),
+               ylab = paste(i, " [", openeddy::units(x[i]), "]", sep = ""),
                main = i, axis.lty = if (d) 0 else 1)
   if (d) {
     index <- round(seq(1, length(p), l = 8))

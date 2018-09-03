@@ -93,13 +93,13 @@ varnames(EP) <- names
 str(EP) # Are the names and attribute varnames edited correctly?
 
 # Units corrections
-(units <- units(EP, names = TRUE)) # Check the units
+(units <- openeddy::units(EP, names = TRUE)) # Check the units
 (units <- gsub(c("\\[|\\]"), "", units)) # Remove the square brackets
 # -check whether µ was correctly interpreted due to the encoding issues
 
 # Update object EP
-units(EP) <- units
-units(EP, names = TRUE) # Are units edited correctly?
+openeddy::units(EP) <- units
+openeddy::units(EP, names = TRUE) # Are units edited correctly?
 
 # Remove RH and VPD from EP to avoid duplication 
 # - eddy covariance estimates are less reliable than those of slow sensors
@@ -154,14 +154,14 @@ for (i in names(DTB_varnames)) {
       paste0("mean(", 
              paste(varnames(M[!qc_index & index]), collapse = ", "), 
              ", na.rm = TRUE)")
-    units(temp) <- units(M[first])
+    openeddy::units(temp) <- openeddy::units(M[first])
     M[first] <- temp
     temp_qc <- rowMeans(M[qc_index & index], na.rm = TRUE)
     varnames(temp_qc) <- 
       paste0("mean(", 
              paste(varnames(M[qc_index & index]), collapse = ", "), 
              ", na.rm = TRUE)")
-    units(temp_qc) <- units(M[first_qc])
+    openeddy::units(temp_qc) <- openeddy::units(M[first_qc])
     M[first_qc] <- temp_qc
     names(M)[first] <- i
     names(M)[first_qc] <- paste0("qc_", i)
@@ -177,7 +177,7 @@ M_names_filter <- grep(paste(names(DTB_varnames), collapse = "|"), names(M))
 M <- M[M_names_filter]
 
 # Correct units
-units(M) <- gsub("st. ", "deg", units(M))
+openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
 
 # Convert timestamp to POSIXct format and center it
 head(M$timestamp) # Starting at the beginning of year? (e.g. 1.1.2016 0:30:00)
@@ -189,7 +189,7 @@ varnames(M) <- M_vars
 # Merge Meteo and EddyPro inputs and save it with documentation ================
 
 site <- merge(M, EP, by = "timestamp", all.x = TRUE)
-units(site) <- c(units(M), units(EP[-1]))
+openeddy::units(site) <- c(openeddy::units(M), openeddy::units(EP[-1]))
 varnames(site) <- c(varnames(M), varnames(EP[-1]))
 save_site <- site
 
@@ -640,17 +640,15 @@ write_eddy(site, paste(path, siteyear, "_forGF_QC_full_output_", Tstamp, ".csv",
                        sep = ""))
 
 # Save essential output
-essentials <- c("timestamp", "DOY", "date", "time", "P", "GR", "Rn", "PAR", 
-                "Tair", "Tsoil", "RH", "VPD", "Tau", "qc_Tau", 
+essentials <- c(names(M), "DOY", "date", "time", "Tau", "qc_Tau", 
                 "qc_Tau_composite", "rand_err_Tau", "w_var", "u_var", 
-                "H", "qc_H", "qc_H_composite", "H_strg", "H", 
-                "qc_H_forGF", "rand_err_H", "ts_var", "LE", "ET", 
-                "h2o_flux", "rand_err_h2o_flux", "h2o_strg", "h2o_v_adv", 
-                "qc_LE", "qc_LE_composite", "LE_strg", "LE", 
-                "qc_LE_forGF", "rand_err_LE", "h2o_var", "NEE", 
-                "qc_NEE", "qc_NEE_composite", "co2_strg", "NEE", 
-                "qc_NEE_forGF", "rand_err_NEE", "co2_var", "co2_v_adv", 
-                "wind_speed", "wind_dir", "ustar", "L", "zeta", "bowen_ratio")
+                "H", "qc_H", "qc_H_composite", "qc_H_forGF", "H_strg",  
+                "rand_err_H", "ts_var", "LE", "qc_LE", "qc_LE_composite", 
+                "qc_LE_forGF", "LE_strg", "rand_err_LE", "ET", "h2o_flux", 
+                "rand_err_h2o_flux", "h2o_strg", "h2o_var", "h2o_v_adv", "NEE", 
+                "qc_NEE", "qc_NEE_composite", "qc_NEE_forGF", "co2_strg",  
+                "rand_err_NEE", "co2_var", "co2_v_adv", "wind_speed", 
+                "wind_dir", "ustar", "L", "zeta", "bowen_ratio")
 
 # Show which names are not available in the object site
 essentials[!essentials %in% names(site)]

@@ -1,12 +1,11 @@
 ### Description ================================================================
 
-# This code primarily aims at u*-filtering, gap-filling (GF), 
-# flux partitioning (FP) and preparation of input data for summaries. 
-# Original and final data are plotted and further statistics are computed.
-# Computation of bootstrap u* thresholds and estimation of standard deviation 
-# based on look-up tables provides further information about measurement 
-# uncertainty.
-# Code developed by Ladislav Šigut (sigut.l@czechglobe.cz).  
+#' This code primarily aims at u*-filtering, gap-filling (GF), flux partitioning
+#' (FP) and preparation of input data for summaries. Original and final data are
+#' plotted and further statistics are computed. Computation of bootstrap u*
+#' thresholds and estimation of standard deviation based on look-up tables
+#' provides further information about measurement uncertainty. Code developed by
+#' Ladislav Šigut (sigut.l@czechglobe.cz).
 
 ### Loading the required packages ==============================================
 
@@ -37,7 +36,7 @@ path_out <- "./Level 3/Gap-filling/REddyProc/"
 (path_plots <- paste(path_out, "Plots/", sep = ""))
 (path_UF <- paste(path_out, "Ustar filtering/", sep = ""))
 pkg_version <- packageVersion("REddyProc")
-input <- "./Level 2/Input for gap-filling/KRP16_2018-08-10.txt"
+input <- "./Level 2/Input for gap-filling/KRP16_2018-09-03.txt"
 lat <- 49.6 # edit site latitude
 long <- 15.1 # edit site longtitude
 tz <- 1 # timezone
@@ -188,6 +187,7 @@ for (i in suffixes) {
   names(out)[corr_filter] <- paste(cols_out[corr_filter], i, sep = '_')
   FP_GL10_out <- cbind(FP_GL10_out, out)
 }
+saveRDS(FP_GL10_out, file = paste0(path_out, "FP_GL10_out.rds"))
 rm(EddyProc.C)
 EddyProc.C <- readRDS(paste0(path_out, "EddyProc.C_GL10_uStar.rds"))
 colnames$FP_GL10 <- colnames(FP_GL10_out)
@@ -216,8 +216,7 @@ for (Var in DC_vars) {
 ### Combine ustar filter (UF) with qc_forGF_NEE ================================
 
 # load essential QC file
-ess_path <- paste("./Level 2/Input for gap-filling/", 
-                  "KRP16_forGF_QC_essentials_2018-08-10.csv", sep = "")
+ess_path <- "./Level 2/Input for gap-filling/KRP16_forGF_QC_essentials_2018-09-03.csv"
 ess_in <- read_eddy(ess_path)
 # Export input data, gap-filling and flux partitioning results
 GF_MR05 <- readRDS(paste0(path_out, "EddyProc.C_MR05.rds"))
@@ -291,23 +290,23 @@ names(ess_out)
 # 2) _fall: filled flux with original measurements excluded
 pdf(paste(path_out, siteyear, "_H_f_", Tstamp, ".pdf", sep = ""),
     width = 11.00, height = 8.27)
-plot_eddy(ess_out, "H_stc", "qc_H_stc_forGF", "qc_H_stc_forGF",
+plot_eddy(ess_out, "H", "qc_H_forGF", "qc_H_forGF",
           flux_gf = "H_f")
 dev.off()
 pdf(paste(path_out, siteyear, "_H_fall_", Tstamp, ".pdf", sep = ""),
     width = 11.00, height = 8.27)
-plot_eddy(ess_out, "H_stc", "qc_H_stc_forGF", "qc_H_stc_forGF",
+plot_eddy(ess_out, "H", "qc_H_forGF", "qc_H_forGF",
           flux_gf = "H_fall")
 dev.off()
 
 pdf(paste(path_out, siteyear, "_LE_f_", Tstamp, ".pdf", sep = ""),
     width = 11.00, height = 8.27)
-plot_eddy(ess_out, "LE_stc", "qc_LE_stc_forGF", "qc_LE_stc_forGF",
+plot_eddy(ess_out, "LE", "qc_LE_forGF", "qc_LE_forGF",
           flux_gf = "LE_f")
 dev.off()
 pdf(paste(path_out, siteyear, "_LE_fall_", Tstamp, ".pdf", sep = ""),
     width = 11.00, height = 8.27)
-plot_eddy(ess_out, "LE_stc", "qc_LE_stc_forGF", "qc_LE_stc_forGF",
+plot_eddy(ess_out, "LE", "qc_LE_forGF", "qc_LE_forGF",
           flux_gf = "LE_fall")
 dev.off()
 

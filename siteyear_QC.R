@@ -349,9 +349,8 @@ site[names(QC)] <- QC # Save the results to the main data frame
 
 # Create data frame with test names and specification of test additivity
 fluxes <- c("Tau", "H", "LE", "NEE")
-qc_names <- c("qc_flux", "qc_instrum_abslim", "qc_instrum_spikesHF", 
-              "qc_flux_missfrac", "qc_flux_scf", "qc_ALL_wresid")
-additive <- c(rep(FALSE, 5), TRUE) # Only the qc_ALL_wresid filter is additive
+qc_names <- c("qc_flux", "qc_instrum_abslim", "qc_flux_missfrac", "qc_flux_scf")
+additive <- FALSE # Only the qc_ALL_wresid filter is additive
 na.as <- NA
 pattern <- data.frame(qc_names = qc_names, additive = additive, na.as = na.as)
 
@@ -389,10 +388,9 @@ lapply(interdep_enclosed, table, useNA = "always")
 site[names(interdep_enclosed)] <- interdep_enclosed # Save the results
 
 # Create data frame with test names and specification of test additivity
-qc_names <- c("qc_flux", "qc_instrum_abslim", "qc_instrum_spikesHF", 
-              "qc_flux_missfrac", "qc_flux_scf", "qc_ALL_wresid", 
+qc_names <- c("qc_flux", "qc_instrum_abslim", "qc_flux_missfrac", "qc_flux_scf", 
               "qc_flux_interdep")
-additive <- c(rep(FALSE, 5), rep(TRUE, 2)) # _wresid & _interdep are additive
+additive <- c(rep(FALSE, 4), TRUE) # _wresid & _interdep are additive
 na.as <- NA
 pattern <- data.frame(qc_names = qc_names, additive = additive, na.as = na.as)
 
@@ -401,8 +399,8 @@ comp <- lapply(fluxes, assign_tests, x = pattern)
 names(comp) <- fluxes
 
 # Remove not applied tests and check the list
-comp$Tau <- comp$Tau[-7, ] # qc_Tau_interdep not used
-comp$LE <- comp$LE[-7, ] # !!! With open-path analyzer (IRGA = "open") comp$LE
+comp$Tau <- comp$Tau[-5, ] # qc_Tau_interdep not used
+comp$LE <- comp$LE[-5, ] # !!! With open-path analyzer (IRGA = "open") comp$LE
                          # would include also "qc_LE_interdep"
 comp # check the list
 
@@ -461,51 +459,6 @@ site$qc_H_spikesLF   <- desp_H
 site$qc_LE_spikesLF  <- desp_LE
 site$qc_NEE_spikesLF <- desp_NEE
 
-### Filtering fluxes with outlying random error ================================
-
-# plot(site$rand_err_H)
-# err_H <- despikeLF(site, var = "rand_err_H", qc_flag = "qc_H_composite",
-#                    name_out = "qc_H_rand_err_spikesLF", var_thr = c(0, 50))
-# plot(site$rand_err_LE)
-# err_LE <- despikeLF(site, var = "rand_err_LE", qc_flag = "qc_LE_composite",
-#                     name_out = "qc_LE_rand_err_spikesLF", var_thr = c(0, 50))
-# plot(site$rand_err_NEE)
-# err_NEE <- despikeLF(site, var = "rand_err_NEE", 
-#                       qc_flag = "qc_NEE_composite", 
-#                       name_out = "qc_NEE_rand_err_spikesLF", 
-#                       var_thr = c(0, 20))
-# 
-# # Check the results
-# lapply(list(err_H = err_H, err_LE = err_LE, err_NEE = err_NEE), 
-#        table, useNA = "a")
-# 
-# # Save the results
-# site$qc_H_rand_err_spikesLF    <- err_H
-# site$qc_LE_rand_err_spikesLF   <- err_LE
-# site$qc_NEE_rand_err_spikesLF <- err_NEE
-
-### Filtering fluxes with outlying variance ====================================
-
-# plot(site$ts_var, ylim = c(0, 10))
-# var_H <- despikeLF(site, var = "ts_var", qc_flag = "qc_H_composite",
-#                    name_out = "qc_H_ts_var_spikesLF", var_thr = c(0, 5))
-# plot(site$h2o_var, ylim = c(0, 10))
-# var_LE <- despikeLF(site, var = "h2o_var", qc_flag = "qc_LE_composite",
-#                     name_out = "qc_LE_h2o_var_spikesLF", var_thr = c(0, 5))
-# plot(site$co2_var, ylim = c(0, 200))
-# var_NEE <- despikeLF(site, var = "co2_var", qc_flag = "qc_NEE_composite", 
-#                       name_out = "qc_NEE_co2_var_spikesLF", 
-#                       var_thr = c(0, 200))
-# 
-# # Check the results
-# lapply(list(var_H = var_H, var_LE = var_LE, var_NEE = var_NEE), 
-#        table, useNA = "a")
-# 
-# # Save the results
-# site$qc_H_ts_var_spikesLF  <- var_H
-# site$qc_LE_h2o_var_spikesLF <- var_LE
-# site$qc_NEE_co2_var_spikesLF <- var_NEE
-
 ### Fetch filter ===============================================================
 
 # NB: qc_ALL_fetch70 is actually not applied to Tau
@@ -513,24 +466,45 @@ FF <- fetch_filter(site, "x_70perc", "wind_dir", boundary, "qc_ALL_fetch70")
 table(FF, useNA = "always", dnn = "qc_ALL_fetch70")
 site$qc_ALL_fetch70 <- FF
 
-### Combine QC flags used for gap-filling ======================================
+### Combine QC flags before manual QC ==========================================
 
 # Create a list for each flux with additional tests and their properties
-# add <- data.frame(H = c("qc_H_spikesLF", "qc_H_rand_err_spikesLF", 
-#                             "qc_H_ts_var_spikesLF", "qc_ALL_fetch70"),
-#                   LE = c("qc_LE_spikesLF", "qc_LE_rand_err_spikesLF", 
-#                              "qc_LE_h2o_var_spikesLF", "qc_ALL_fetch70"),
-#                   NEE = c("qc_NEE_spikesLF", "qc_NEE_rand_err_spikesLF", 
-#                           "qc_NEE_co2_var_spikesLF", "qc_ALL_fetch70"),
-#                   stringsAsFactors = FALSE)
-# properties <- data.frame(additive = FALSE, na.as = c(rep(0, 3), NA))
-####### add and properties above include rand_err and var despiking
-####### if not required rewrite add and properties below
 add <- data.frame(H = c("qc_H_spikesLF", "qc_ALL_fetch70"),
                   LE = c("qc_LE_spikesLF", "qc_ALL_fetch70"),
                   NEE = c("qc_NEE_spikesLF", "qc_ALL_fetch70"),
                   stringsAsFactors = FALSE)
 properties <- data.frame(additive = FALSE, na.as = c(0, NA))
+
+add_list <- lapply(add, function(qc_names) cbind(qc_names, properties))
+
+# Create a complete list of tests within prelim scheme (does not apply for Tau)
+prelim <- lapply(1:3, function(x) rbind(comp[-1][[x]], add_list[[x]]))
+names(prelim) <- c("H", "LE", "NEE")
+prelim # Check the list
+
+# Combine existing tests/filters to produce prelim flags:
+H_prelim <- simplify_combn_QC(site, prelim, "H", "prelim")
+LE_prelim <- simplify_combn_QC(site, prelim, "LE", "prelim")
+NEE_prelim <- simplify_combn_QC(site, prelim, "NEE", "prelim")
+
+### Manual QC ==================================================================
+
+excl_H <- exclude(site$H, H_prelim, "qc_H_man")
+excl_LE <- exclude(site$LE, LE_prelim, "qc_LE_man")
+excl_NEE <- exclude(site$NEE, NEE_prelim, "qc_NEE_man")
+
+site$qc_H_man   <- excl_H
+site$qc_LE_man  <- excl_LE
+site$qc_NEE_man <- excl_NEE
+
+### Combine QC flags used for gap-filling ======================================
+
+# Create a list for each flux with additional tests and their properties
+add <- data.frame(H = c("qc_H_spikesLF", "qc_ALL_fetch70", "qc_H_man"),
+                  LE = c("qc_LE_spikesLF", "qc_ALL_fetch70", "qc_LE_man"),
+                  NEE = c("qc_NEE_spikesLF", "qc_ALL_fetch70", "qc_NEE_man"),
+                  stringsAsFactors = FALSE)
+properties <- data.frame(additive = FALSE, na.as = c(0, NA, NA))
 
 add_list <- lapply(add, function(qc_names) cbind(qc_names, properties))
 

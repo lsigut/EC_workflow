@@ -206,6 +206,7 @@ d_pars$CUP <- FALSE
 d_pars$CUP[d_sum$NEP_uStar_f > 0] <- TRUE
 d_pars$GSL_method1 <- FALSE
 d_pars$GSL_method1[d_mean$Tair > 5] <- TRUE
+openeddy::units(d_pars) <- rep("-", length(d_pars))
 
 # Merge the daily means, sums and pars  
 daily <- cbind(d_mean, d_sum[-1], d_sd[-1], d_rel_err, d_pars[-1])
@@ -247,6 +248,7 @@ weeks_d <- factor(weeks_d, levels = unique(weeks))
 w_pars$CUP <- aggregate(d_pars["CUP"], list(week = weeks_d), sum)$CUP
 w_pars$GSL_method1 <- aggregate(d_pars["GSL_method1"], list(week = weeks_d), 
                                 sum)$GSL_method1
+openeddy::units(w_pars) <- rep("-", length(w_pars))
 
 # Compute number of days within interval
 w_days <- aggregate(daily$day, list(week = weeks_d), length)
@@ -291,6 +293,7 @@ months_d <- factor(months_d, levels = unique(months))
 m_pars$CUP <- aggregate(d_pars["CUP"], list(month = months_d), sum)$CUP
 m_pars$GSL_method1 <- aggregate(d_pars["GSL_method1"], list(month = months_d), 
                                 sum)$GSL_method1
+openeddy::units(m_pars) <- rep("-", length(m_pars))
 
 # Compute number of days within interval
 m_days <- aggregate(daily$day, list(month = months_d), length)
@@ -387,6 +390,7 @@ if (any(is.na(daily["Tair"]))) {
 y_pars$GS_start_method3 <- GS_start
 y_pars$GS_end_method3 <- GS_end
 y_pars$GSL_method3 <- as.numeric(GS_end - GS_start)
+openeddy::units(y_pars) <- rep("-", length(y_pars))
 
 # Compute number of days within interval
 y_days <- aggregate(daily$day, list(year = years_d), length)

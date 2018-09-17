@@ -420,7 +420,8 @@ plot_summary <- function(x, interval = c("daily", "weekly", "monthly")) {
                names.arg = if (d) NULL else {
                  unique(strftime(site$date, format = format))
                },
-               ylim = if (i == "closure_fraction") c(0, 1) else NULL,
+               ylim = if (i %in% c("evaporative_fraction", "closure_fraction")) 
+                 c(0, 1) else NULL,
                xlab = paste(interval, "timescale"),
                ylab = paste(i, " [", openeddy::units(x[i]), "]", sep = ""),
                main = i, axis.lty = if (d) 0 else 1)

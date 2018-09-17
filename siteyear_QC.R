@@ -26,8 +26,11 @@ library("reshape2")
 # (i.e. the !Site_structure_template from the server)
 
 # Required inputs are post-processed data, meteo data 
-# (./Level 1/Post-processing/EddyPro Output/) and
+# (./Level 1/Post-processing/EddyPro Output/) and (if using fetch filter)
 # Fetch_filter_boundaries.csv file (./Level 2/Quality checking)
+
+name <- "Your name" # person that performed processing
+mail <- "your@mail.cz" # mail of the person that performed processing
 pkg_version <- packageVersion("openeddy")
 siteyear <- "KRP16" # Edit the site-year (included in folder and file names)
 Tstamp <- format(Sys.time(), "%Y-%m-%d") # Timestamp of the computation
@@ -633,7 +636,9 @@ write_eddy(site[essentials], paste(GF_input, siteyear, "_forGF_QC_essentials_",
                                    Tstamp, ".csv", sep = ""))
 
 # Save settings used for the computations
-settings <- list(openeddy_pkg_version = pkg_version,
+settings <- list(processed_by = name,
+                 mail_contact = mail,
+                 openeddy_pkg_version = pkg_version,
                  siteyear = siteyear, 
                  EddyPro_input = EddyPro_input,
                  Meteo_input = Meteo_input,

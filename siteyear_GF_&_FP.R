@@ -28,6 +28,9 @@ library(REddyProc)
 # This assumes that the subdirectory structure is already present
 # (i.e. the !Site_structure_template from the server)
 
+name <- "Your name" # person that performed processing
+mail <- "your@mail.cz" # mail of the person that performed processing
+
 # Set filenames, paths and arguments
 siteyear <- "KRP16" # used as output filename and as 'ID.s' in sEddyProc$new()
 Tstamp <- format(Sys.time(), "%Y-%m-%d") # Timestamp of the computation
@@ -72,7 +75,7 @@ EddyData.F <- read_eddy(input, sep = "\t")
 # str(EddyData.F)
 
 # If not provided, calculate VPD from Tair and rH
-if (!"VPD" %in% names(EddyData.F)) {
+if (!"VPD" %in% names(EddyData.F) || anyNA(EddyData.F$VPD)) {
   EddyData.F$VPD <- fCalcVPDfromRHandTair(EddyData.F$rH, EddyData.F$Tair)
 }
 
@@ -229,7 +232,7 @@ all_out$qc_NEE_forGF_UF <- combn_QC(cbind(ess_in["qc_NEE_forGF"], qc_uStar),
                                    c("qc_NEE_forGF", "qc_uStar"), 
                                    "qc_NEE_forGF_UF")
 
-### Saving outputs, settings and plots =========================================
+### Saving outputs, documentation and plots =========================================
 
 # Save all results together with input data into CSV file 
 write_eddy(all_out, 
@@ -252,7 +255,7 @@ ess_out <- cbind(ess_in, all_out[ess_vars])
 write_eddy(ess_out, paste(path_out, siteyear, "_GF_essentials_", Tstamp, ".csv", 
                           sep = ""))
 
-# Save settings and other info
+# Save documentation and other info
 perc_records <- nrow(all_out) / 100
 flux_avail_names <- c("H_orig", "LE_orig", "NEE_uStar_orig")
 avail_rec <- lapply(flux_avail_names, function(x) {
@@ -260,23 +263,25 @@ avail_rec <- lapply(flux_avail_names, function(x) {
   unname(temp["TRUE"] / perc_records)
 })
 names(avail_rec) <- flux_avail_names
-settings <- list(REddyProc_pkg_version = pkg_version,
-                 siteyear = siteyear, 
-                 path_out = path_out,
-                 path_plots = path_plots,
-                 input = input,
-                 latitude = lat,
-                 longitude = long, 
-                 timezone = tz, 
-                 meteo_variables = meteo,
-                 flux_partitioning_temperature = FP_temp,
-                 seasonal_ustar = seasonal_ustar,
-                 use_changepoint_detection = use_CPD,
-                 available_H_perc = avail_rec$H_orig,
-                 available_LE_perc = avail_rec$LE_orig,
-                 available_NEE_perc_after_UF = avail_rec$NEE_uStar_orig)
-sink(paste(path_out, siteyear, '_settings.txt', sep = ""))
-settings
+documentation <- list(processed_by = name,
+                      mail_contact = mail,
+                      REddyProc_pkg_version = pkg_version,
+                      siteyear = siteyear, 
+                      path_out = path_out,
+                      path_plots = path_plots,
+                      input = input,
+                      latitude = lat,
+                      longitude = long, 
+                      timezone = tz, 
+                      meteo_variables = meteo,
+                      flux_partitioning_temperature = FP_temp,
+                      seasonal_ustar = seasonal_ustar,
+                      use_changepoint_detection = use_CPD,
+                      available_H_perc = avail_rec$H_orig,
+                      available_LE_perc = avail_rec$LE_orig,
+                      available_NEE_perc_after_UF = avail_rec$NEE_uStar_orig)
+sink(paste(path_out, siteyear, '_documentation.txt', sep = ""))
+documentation
 sink()
 
 # Saving plots with gap-filled and flux partitioned data 

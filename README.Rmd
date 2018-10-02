@@ -23,7 +23,7 @@ processing chain consisting of four stages:
 data and apply automated tests and filters implemented in 
 [openeddy](https://github.com/lsigut/openeddy) to quality check fluxes of 
 momentum (Tau), sensible (H) and latent heat (LE) and net ecosystem exchange 
-(NEE). Export description of applied QC and produce the outputs needed in next 
+(NEE). Export documentation of applied QC and produce the outputs needed in next 
 steps. QC workflow is placed in `.\Level 2\Quality checking\`.
 1. Storage: under development. Currently it only plots monthly means of daily
 courses for all storage fluxes using 
@@ -43,6 +43,8 @@ daily, weekly, monthly and yearly timescales. A limited amount of computed
 parameters is also produced, including different uncertainty estimates. Summary 
 workflow is placed in `.\Level 3\Summary\REddyProc\`.
 
+The example dataset is available at Zenodo due to GitHub files size limitation:
+https://doi.org/10.5281/zenodo.1442531
 The workflows assume certain folder structure 
 (see KRP16 - before processing.zip):
 * Level 0: raw data, related metadata and configuration files
@@ -60,7 +62,8 @@ also requires fetch filter boundary vector for given site, here loaded from
 
 In order to run the example siteyear KRP16:
 
-1. Download and unzip `KRP16 - before processing.zip`
+1. Download `KRP16 - before processing.zip` from 
+[Zenodo](https://doi.org/10.5281/zenodo.1442531) and unzip 
 1. Install devtools package if not available yet
 ```r
 install.packages("devtools")
@@ -75,7 +78,8 @@ install.packages("REddyProc")
 ```
 1. Go through the processing chain by running commands in workflow files 
 in the order and at the locations as described above
-1. You can check your results with those of `KRP16 - processed.zip`
+1. You can check your results with those of `KRP16 - processed.zip` at 
+[Zenodo](https://doi.org/10.5281/zenodo.1442531)
 
 Note: Sourcing the QC workflow does not produce desired outcome because
 interactive functions are included.

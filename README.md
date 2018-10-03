@@ -4,9 +4,9 @@ EC\_workflow
 
 The proposed workflow allows to process eddy covariance data with single processing chain consisting of four stages:
 
-1.  **Quality control (QC):** load the EddyPro output and gap-filled meteorological data and apply automated tests and filters implemented in [openeddy](https://github.com/lsigut/openeddy) to quality check fluxes of momentum (Tau), sensible (H) and latent heat (LE) and net ecosystem exchange (NEE). Export documentation of applied QC and produce the outputs needed in next steps. QC workflow is placed in `.\Level 2\Quality checking\`.
+1.  **Quality control (QC):** load the EddyPro output and gap-filled meteorological data and apply automated tests and filters implemented in [openeddy](https://github.com/lsigut/openeddy) to quality check fluxes of momentum (Tau), sensible (H) and latent heat (LE) and net ecosystem exchange (NEE). Export documentation of applied QC and produce the outputs needed in next steps. QC workflow is placed at `.\Level 2\Quality checking\` of expected folder structure described below.
 
-2.  **Storage:** under development. Currently it only plots monthly means of daily courses for all storage fluxes using [REddyProc](https://github.com/bgctw/REddyProc). The plan is to include processing of temperature, RH and CO2 profiles and computation of storage fluxes with support for 1 Hz measurements. Storage workflow is placed in `.\Level 2\Storage flux\`.
+2.  **Storage:** under development. Currently it only plots monthly means of daily courses for all storage fluxes using [REddyProc](https://github.com/bgctw/REddyProc). These storage fluxes are computed by discrete (one point) approach with EddyPro. The plan is to include processing of temperature, RH and CO2 profiles and computation of storage fluxes with support for 1 Hz measurements. Storage workflow is placed in `.\Level 2\Storage flux\`.
 
 3.  **Gap-filling and flux partitioning (GF & FP):** combine utilities of [REddyProc](https://github.com/bgctw/REddyProc) and [openeddy](https://github.com/lsigut/openeddy) to gap-fill (H, LE, NEE), partition (NEE) and visualize (H, LE, NEE) fluxes. The setup allows to change and document some processing options in an organized way. Computation of bootstrapped friction velocity threshold is included. GF & FP workflow is placed in `.\Level 3\Gap-filling\REddyProc\`.
 
@@ -16,9 +16,8 @@ The example dataset is available at Zenodo due to GitHub file size limitation: <
 
 The workflows assume certain folder structure:
 
-<p align="center">
 ![](Folder%20structure.jpg)
-</p>
+
 -   Level 0: raw data, related metadata and configuration files
 -   Level 1: half-hourly data processed by EddyPro and gap-filled meteorological data
 -   Level 2: results and documentation of QC, storage corrected fluxes for GF & FP
@@ -26,15 +25,14 @@ The workflows assume certain folder structure:
 
 The complete processing chain in the context of above folder structure can be summarized as:
 
-<p align="center">
 ![](Processing%20chain.jpg)
-</p>
-In order to run fetch filter, QC workflow also requires fetch filter boundary vector for given site, here loaded from `.\Level 2\Quality checking\Fetch_filter_boundaries_20160206.csv`. For your site you will have to define your own region of interest (ROI) boundary (see *ROI boundary* section below).
+
+In order to run fetch filter, QC workflow also requires fetch filter (or region of interest; ROI) boundary vector for given site, here loaded from `.\Level 2\Quality checking\Fetch_filter_boundaries_20160206.csv`. For your site you will have to define your own region of interest (ROI) boundary (see *ROI boundary* section below).
 
 Example
 -------
 
-In order to run the example siteyear KRP16:
+In order to run the example site-year KRP16:
 
 1.  Download `KRP16 - before processing.zip` from [Zenodo](https://doi.org/10.5281/zenodo.1442531) and unzip
 2.  Install devtools package if not available yet
@@ -71,9 +69,8 @@ The spatial extent of the studied ecosystem (region of interest; ROI) is specifi
 
 ### ROI boundary example
 
-<p align="center">
 ![](ROI%20boundary%20example.jpg)
-</p>
+
 In this simplified case ROI boundary would be specified as:
 
 ``` r
@@ -90,9 +87,8 @@ c(150, 200, 250, 300)
 
 Realistic representation of ROI boundary can look e.g. like this:
 
-<p align="center">
 ![](ROI%20boundary%20RAJ.jpg)
-</p>
+
 References
 ----------
 

@@ -33,14 +33,14 @@ ecosystems and EC setups.
 
 ## Requirements
 
-The EC workflow is currently aligned with EddyPro software
+The EC workflow is currently aligned with `EddyPro` software
 [output](https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html).
 It is expected that meteorological data passed its own separate workflow (not
 covered by `openeddy`) and are already converted to physical units and underwent
-quality control. Although Example (see below) contains already gap-filled
-meteorological data, it is not required. Processing of multiple or incomplete
-years is supported. In case of multiple years edits in EC workflow scripts are
-required.
+quality control. Although `KRP16` site-year example below contains already
+gap-filled meteorological data, it is not required. Processing of multiple or
+incomplete years is supported. In case of multiple years, edits in EC workflow
+scripts are required.
 
 Adapting workflow for a new site mainly requires column renaming, preferably
 within EC workflow code (alternatively directly in input data). Support for
@@ -64,6 +64,7 @@ To run EC workflow for the example site-year KRP16:
 Download `KRP16 - before processing.zip` from
 [Zenodo](https://doi.org/10.5281/zenodo.1442531) and unzip. Open, edit and run
 workflow files in specified order according to instructions there:
+
 1. `data_preparation` workflow: formatting and merging inputs.
 1. `QC` workflow: eddy covariance quality control.
 1. `GF_&_FP` workflow: uStar-filtering, gap-filling and flux partitioning.
@@ -91,13 +92,15 @@ processing chain consisting of four stages:
 
 1. **Storage:** estimate storage flux to allow for storage correction.
 Computation of storage flux from profile measurements is currently not
-available. `EddyPro` full output provides storage fluxes computed by discrete
-(one point) approach. While this is sufficient for sites with short canopy (e.g.
-the example cropland site `CZ-KrP`), one point approximation is less suitable
-with increasing EC measurement height. Implementation of profile measurements 
-for computation of storage flux is outside of scope of `openeddy` package. 
+available. `EddyPro` full output provides storage fluxes computed by [discrete
+(one point)
+approach](https://www.licor.com/env/support/EddyPro/topics/calculate-storage-fluxes.html).
+While this is sufficient for sites with short canopy (e.g. the example cropland
+site `CZ-KrP`), one point approximation is less suitable with increasing EC
+measurement height. Implementation of profile measurements for computation of
+storage flux is outside of scope of `openeddy` package.
 
-1. **Quality control (QC):** load the EddyPro output and gap-filled 
+1. **Quality control (QC):** load the `EddyPro` output and gap-filled 
 meteorological data and apply automated tests and filters implemented in 
 [openeddy](https://github.com/lsigut/openeddy) to quality check fluxes of 
 momentum (Tau), sensible (H) and latent heat (LE) and net ecosystem exchange 
@@ -175,7 +178,7 @@ Realistic representation of ROI boundary can look e.g. like this:
 
 ## Naming strategy with the EC workflow
 
-In order to take advantage of openeddy default arguments, certain naming
+In order to take advantage of `openeddy` default arguments, certain naming
 strategy is recommended. 
 
 `EddyPro` full output [variable
@@ -184,6 +187,7 @@ are used with a few modifications if symbols were included in the variable name
 (e.g. Monin-Obukhov stability parameter `(z-d)/L` is corrected to `zeta`).
 
 Expected names of meteorological variables are due to historical reasons:
+
 * GR: global radiation [W m-2]
 * PAR: photosynthetically active radiation [umol m-2 s-1]
 * Rn: net radiation [W m-2]
@@ -200,6 +204,7 @@ and flux that it corresponds to, following naming strategy was devised:
 ### QC prefixes
 
 They specify which flux is affected by given QC column:
+
 * qc_Tau_, qc_H, qc_LE, qc_NEE: only applicable for the respective fluxes.
 * qc_SA_: applicable to fluxes relying only on sonic (Tau, H). 
 * qc_GA_: applicable to fluxes relying on GA (LE, NEE); only GA issues 
@@ -211,6 +216,7 @@ GA issues considered.
 ### QC suffixes
 
 They specify which QC test/filter was applied to get the QC flags:
+
 * _SS_ITC: steady state test and test of integral turbulence characteristics.
 * _instrum: flags assigned during the quality assurance phase.
 * _abslim: check of [absolute limits](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Absolutelimits).
@@ -219,7 +225,7 @@ They specify which QC test/filter was applied to get the QC flags:
 * _scf: check of spectral correction factor against thresholds. 
 * _wresid: check of mean unrotated w (double rotation) or w residual (planar 
 fit) against thresholds.
-* _thr_X: user-defined thresholds for a variable X (_thr_tsvar).
+* _thr_X: user-defined thresholds for a variable X (e.g. _thr_tsvar).
 * _runs: check of runs with repeating values.
 * _lowcov: threshold test for unreasonably low fluxes (assuming issues during 
 covariance computation). 
@@ -231,10 +237,11 @@ against fetch distance for given wind direction.
 * _forGF: the composite QC column used to screen fluxes for gap-filling 
 combining selected above test/filter results.
 
-Note that _abslim and _spikesHF have thresholds set already within EddyPro. Thus
-change of thresholds can be achieved only by additional raw data re-processing.
+Note that _abslim and _spikesHF have thresholds set already within `EddyPro`.
+Thus change of thresholds can be achieved only by additional raw data
+re-processing.
 
-REddyProc naming strategy is available at [MPI Online Tool
+`REddyProc` naming strategy is available at [MPI Online Tool
 website](https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput).
 
 ## Abbreviations
@@ -255,7 +262,7 @@ website](https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput).
 
 ## References
 
-Publication describing openeddy is not yet available. When describing 
+Publication describing `openeddy` is not yet available. When describing 
 the proposed quality control scheme, please refer to it as similar to:
 
 Mauder, M., Cuntz, M., Drüe, C., Graf, A., Rebmann, C., Schmid, H.P., 
@@ -263,7 +270,7 @@ Schmidt, M., Steinbrecher, R., 2013. A strategy for quality and uncertainty
 assessment of long-term eddy-covariance measurements. Agric. For. Meteorol. 
 169, 122-135, https://doi.org/10.1016/j.agrformet.2012.09.006
 
-The methodology and benchmark of REddyProc 1.1.3 is described in the following 
+The methodology and benchmark of `REddyProc 1.1.3` is described in the following 
 paper:
 
 Wutzler, T., Lucas-Moffat, A., Migliavacca, M., Knauer, J., Sickel, K., 

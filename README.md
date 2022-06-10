@@ -26,7 +26,7 @@ The EC workflow is currently aligned with `EddyPro` software
 It is expected that meteorological data passed its own separate workflow
 (not covered by `openeddy`) and are already converted to physical units
 and underwent quality control. Although `KRP16` site-year example below
-contains already gap-filled meteorological data, it is not required.
+contains already gap-filled meteorological data, gaps are allowed.
 Processing of multiple or incomplete years is supported. In case of
 multiple years, edits in EC workflow scripts are required.
 
@@ -44,16 +44,16 @@ alternatives.
 
 In order to run `fetch_filter()`, QC workflow also requires the region
 of interest (ROI) outline for given site-year. ROI is provided by the
-user in a form of numeric vector (see *ROI boundary* section below).
+user in a form of numeric vector (see *ROI boundary* section below and
+<https://github.com/lsigut/ROI_boundary>).
 
 ## Usage
 
 To run EC workflow for the example site-year KRP16:
 
 Download `KRP16 - before processing.zip` from
-[Zenodo](https://doi.org/10.5281/zenodo.1442531) and unzip. Open, edit
-and run workflow files in specified order according to instructions
-there:
+[Zenodo](https://doi.org/10.5281/zenodo.6631498) and unzip. Run workflow
+files in specified order according to instructions there:
 
 1.  `data_preparation` workflow: formatting and merging inputs.
 2.  `QC` workflow: eddy covariance quality control.
@@ -74,7 +74,7 @@ changing to `interactive = FALSE` allows to reproduce all results by
 sourcing all workflows.
 
 You can compare your results with those of `KRP16 - processed.zip` at
-[Zenodo](https://doi.org/10.5281/zenodo.1442531). Notice that in order
+[Zenodo](https://doi.org/10.5281/zenodo.6631498). Notice that in order
 to obtain identical results, you would need to copy the subjective
 manual screening done by site PI located at
 `./Level 2/Quality checking/KRP16_manual_QC.csv`.
@@ -174,7 +174,7 @@ c(150, 200, 250, 300)
 
 Realistic representation of ROI boundary can look e.g. like this:
 
-![](ROI%20boundary%20RAJ.jpg)
+![](CZ-Krp_fetch.png)
 
 ## Naming strategy with the EC workflow
 

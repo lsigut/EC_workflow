@@ -51,7 +51,11 @@ workflow should be achievable already with the existing `openeddy` capabilities.
 The easiest approach could be to `remap_vars()` using the pairing of column
 names of `EddyPro` full output and the EC processing software used.
 `EddyPro`-specific tests/filters mainly present in `extract_QC()` would need to
-be substituted for their alternatives.
+be substituted for their alternatives. The `KRP16` micrometeorological (meteo) 
+data are formatted in a specific way that is handled by specialized function
+`read_MeteoDBS()`. To achieve similar results, you can use `read_eddy()` in 
+combination with `merge_eddy()` to read and validate general data frame with 
+meteo data.
 
 In order to run `fetch_filter()`, QC workflow also requires the region of
 interest (ROI) outline for given site-year. ROI is provided by the user in a
@@ -244,6 +248,23 @@ re-processing.
 
 `REddyProc` naming strategy is available at [MPI Online Tool
 website](https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput).
+
+## Manual QC guide
+
+Theoretically, manual QC is introducing subjectivity to the workflow and should
+be avoided. However, in practice, certain events can occur that might be 
+difficult to screen based on auxiliary data or the tests are not sensitive 
+enough to capture them. It should be noted that data not falling within the 
+expected range might represent interesting rare phenomena and should be 
+carefully investigated before manual removal. The screening typically depends
+on the user experience with the site, considering meteo conditions and 
+phenology. Examples of manually excluded half-hours could be those affected
+by precipitation, strong advection and unexpected technical issues. Neighbors
+of outlying values or isolated points can be good candidates for exclusion as 
+they might have escaped the automated screening. Change of weather fronts can
+lead to unexpected energy fluxes that however reflect real conditions. In these
+conditions it could depend on the research question whether such cases should 
+be excluded.
 
 ## Abbreviations
 

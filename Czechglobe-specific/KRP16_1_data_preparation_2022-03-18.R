@@ -210,7 +210,8 @@ data <- round_df(data)
 
 # Reset units lost during merging
 # - varnames are used only for documentation below
-openeddy::units(data) <- c(openeddy::units(M), openeddy::units(EP[-1]))
+openeddy::units(data) <- c(openeddy::units(M), openeddy::units(EP[-1]), 
+                           openeddy::units(instrum)[-1])
 
 # Save the merged data with documentation ======================================
 

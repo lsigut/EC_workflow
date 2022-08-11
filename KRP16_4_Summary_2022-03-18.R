@@ -124,14 +124,14 @@ pdf(file.path(
   paste0(siteyear, "_wind_roses_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd")]), ], 
-         angle = 22.5, paddle = FALSE, breaks = 5)
+         angle = 15, paddle = FALSE, breaks = 5)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "time")]), ], 
-         type = "time", angle = 22.5, paddle = FALSE, breaks = 5)
+         type = "time", angle = 15, paddle = FALSE, breaks = 5)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "months")]), ], 
-         type = "months", angle = 45, paddle = FALSE, breaks = 5, 
+         type = "months", angle = 15, paddle = FALSE, breaks = 5, 
          grid.line = 10)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ], 
-         type = "stability", angle = 22.5, paddle = FALSE, 
+         type = "stability", angle = 15, paddle = FALSE, 
          breaks = 5, grid.line = 10, 
          main = "Zeta parameter based stability classes")
 ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE)

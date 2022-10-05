@@ -69,11 +69,12 @@ head(data$timestamp)
 
 # Specify variables needed for different procedures later 
 # - used for averaging, summation, uncertainty estimation and plotting
-mean <- c("Tair", "Tsoil", "RH", "VPD", "GR", "Rn", "PAR", "H_f", "H_fqc", 
-          "LE_f", "LE_fqc", "ET_f", "ET_fqc", "NEE_uStar_f", "NEE_uStar_fqc", 
-          "GPP_uStar_f", "GPP_DT_uStar", "Reco_uStar", "Reco_DT_uStar")
+mean <- c("Tair", "Tsoil", "RH", "VPD", "GR", "Rn", "PAR", "GWL", "SWC", "G", 
+          "H_f", "H_fqc", "LE_f", "LE_fqc", "ET_f", "ET_fqc", 
+          "NEE_uStar_f", "NEE_uStar_fqc", "GPP_uStar_f", "GPP_DT_uStar", 
+          "Reco_uStar", "Reco_DT_uStar")
 mean <- choose_avail(names(data), mean)
-sum <- c("P", "GR", "Rn", "PAR", "H_f", "LE_f", "ET_f", 
+sum <- c("P", "GR", "Rn", "PAR", "G", "H_f", "LE_f", "ET_f", 
          grep("(NEE|GPP).+f$", names(data), value = TRUE),
          grep("GPP_DT.+[^D]$", names(data), value = TRUE),
          grep("Reco.+[^D]$", names(data), value = TRUE))
@@ -134,11 +135,11 @@ windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ],
          type = "stability", angle = 15, paddle = FALSE, 
          breaks = 5, grid.line = 10, 
          main = "Zeta parameter based stability classes")
-ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE)
-ggplot_stats(data, "wind_dir", "x_70perc", circular = TRUE)
-ggplot_stats(data, "wind_dir", "wind_speed", circular = TRUE)
-ggplot_stats(data, "wind_dir", "ustar", circular = TRUE)
-ggplot_stats(data, "wind_dir", "zeta", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE))
+print(ggplot_stats(data, "wind_dir", "x_70perc", circular = TRUE))
+print(ggplot_stats(data, "wind_dir", "wind_speed", circular = TRUE))
+print(ggplot_stats(data, "wind_dir", "ustar", circular = TRUE))
+print(ggplot_stats(data, "wind_dir", "zeta", circular = TRUE))
 dev.off()
 
 # Print separately to png
@@ -167,23 +168,23 @@ windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ],
 dev.off()
 
 png_util("wind_dir_x_peak")
-ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE))
 dev.off()
 
 png_util("wind_dir_x_70perc")
-ggplot_stats(data, "wind_dir", "x_70perc", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "x_70perc", circular = TRUE))
 dev.off()
 
 png_util("wind_dir_wind_speed")
-ggplot_stats(data, "wind_dir", "wind_speed", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "wind_speed", circular = TRUE))
 dev.off()
 
 png_util("wind_dir_ustar")
-ggplot_stats(data, "wind_dir", "ustar", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "ustar", circular = TRUE))
 dev.off()
 
 png_util("wind_dir_zeta")
-ggplot_stats(data, "wind_dir", "zeta", circular = TRUE)
+print(ggplot_stats(data, "wind_dir", "zeta", circular = TRUE))
 dev.off()
 
 ### Compute summaries for different intervals ==================================
@@ -348,16 +349,16 @@ pdf(file.path(
   paths$Summary,
   paste0(siteyear, "_spatio-temporal_sampling_coverage_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
-spti_covp
+print(spti_covp)
 dev.off()
 
 # Save specified ggplots to png
 png_util("spatial_sampling_coverage")
-spti_covp[[1]]$spatial_sampling_coverage
+print(spti_covp[[1]]$spatial_sampling_coverage)
 dev.off()
 
 png_util("temporal_sampling_coverage")
-spti_covp[[1]]$temporal_sampling_coverage
+print(spti_covp[[1]]$temporal_sampling_coverage)
 dev.off()
 
 ### Quantify and plot estimates of flux uncertainty ============================
@@ -395,7 +396,7 @@ for (var in vars) {
   # restore units (subsetting removes units)
   openeddy::units(fqc_subset) <- openeddy::units(data)
   
-  # Plot to opend pdf device
+  # Plot to open pdf device
   print(ggplot_stats(fqc_subset, "wind_dir", rel_err, 
                      circular = TRUE, qrange = c(0.005, 0.99)))
   print(ggplot_stats(fqc_subset, "wind_dir", rel_fsd, 

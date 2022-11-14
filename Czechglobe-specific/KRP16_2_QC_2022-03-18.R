@@ -427,7 +427,11 @@ if (interactive_session) {
 # - returned timestamp is removed in 'man' but kept in saved CSV file
 # - if not interactive and no manual QC found: NULL returned 
 man <- check_manually(cbind(data, pre3_res), paths$Quality_checking, 
-                      vars = c("Tau", "H", "LE", "NEE"), 
+                      vars = data.frame(
+                        x = c("Tau", "H", "LE", "NEE"),
+                        y = c("PAR", "Rn", "Rn", "PAR"),
+                        z = c("wind_speed", "LE" , "H", "Tair")
+                      ), 
                       qc_prefix = "qc_", qc_suffix = "_prelim3", 
                       interactive_session, siteyear)[-1]
 summary_QC(man, names(man))
@@ -476,7 +480,11 @@ if (interactive_session) {
 
 # If additional round of manual checking is not needed, skip to next chapter
 man <- check_manually(cbind(data, pre4_res), paths$Quality_checking, 
-                      vars = c("Tau", "H", "LE", "NEE"), 
+                      vars = data.frame(
+                        x = c("Tau", "H", "LE", "NEE"),
+                        y = c("PAR", "Rn", "Rn", "PAR"),
+                        z = c("wind_speed", "LE" , "H", "Tair")
+                      ), 
                       qc_prefix = "qc_", qc_suffix = "_prelim4", 
                       interactive_session, siteyear)[-1]
 summary_QC(man, names(man))

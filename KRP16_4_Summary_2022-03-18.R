@@ -29,9 +29,9 @@ attach_pkg("openair")
 
 # Workflow is currently aligned only with specific package version
 # - package version should be neither higher or lower
-if (packageVersion("openeddy") != "0.0.0.9006")
+if (packageVersion("openeddy") < "0.0.0.9006")
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006'")
+          "'0.0.0.9006' and above")
 
 ### Provide metadata and set file paths and arguments ==========================
 

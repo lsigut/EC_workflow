@@ -36,9 +36,9 @@ invisible(lapply(packages, attach_pkg))
 
 # Workflow is currently aligned only with specific package version
 # - package version should be neither higher or lower
-if (packageVersion("openeddy") != "0.0.0.9006")
+if (packageVersion("openeddy") < "0.0.0.9006")
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006'")
+          "'0.0.0.9006' and above")
 
 if (packageVersion("REddyProc") < "1.3.0")
   warning("this version of workflow works reliably with REddyProc ",

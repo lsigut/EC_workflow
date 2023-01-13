@@ -1,6 +1,6 @@
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
-# EC workflow
+# Eddy covariance workflow
 
 ## Overview
 
@@ -27,12 +27,13 @@ It is expected that meteorological data passed its own separate workflow
 (not covered by `openeddy`) and are already converted to physical units
 and underwent quality control. Although `KRP16` site-year example below
 contains already gap-filled meteorological data, gaps are allowed.
-Processing of multiple or incomplete years is supported. In case of
-multiple years, edits in EC workflow scripts are required.
+Processing of multiple or incomplete years is supported but it requires
+edits in EC workflow scripts.
 
-Adapting workflow for a new site mainly requires column renaming,
-preferably within EC workflow code (alternatively directly in input
-data). Support for other EC processing
+Adapting workflow for a new site mainly requires column renaming
+(variable names expected by used packages), preferably within EC
+workflow code (alternatively directly in input data). Support for other
+EC processing
 [software](https://fluxnet.org/2017/10/10/toolbox-a-rolling-list-of-softwarepackages-for-flux-related-data-processing/)
 (e.g. TK3, EdiRe, EddyUH, EddySoft) is not explicitly provided but
 alternative workflow should be achievable already with the existing
@@ -226,24 +227,44 @@ They specify which flux is affected by given QC column:
 
 They specify which QC test/filter was applied to get the QC flags:
 
--   \_SS_ITC: steady state test and test of integral turbulence
+-   \_SSITC: steady state test and test of integral turbulence
     characteristics.
--   \_instrum: flags assigned during the quality assurance phase.
+-   \_spikesHF: check of [high frequency data spike
+    percentage](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Despiking)
+    in averaging period against thresholds.
+-   \_ampres: check of [amplitude
+    resolution](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Amplituderesolution)
+    in the recorded data.
+-   \_dropout: check of
+    [drop-outs](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Dropouts),
+    i.e. situations when the time series stays for “too long” on a value
+    that is far from the mean.
 -   \_abslim: check of [absolute
-    limits](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Absolutelimits).
--   \_spikesHF: check of [high frequency data
-    spike](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Despiking)
-    percentage in averaging period against thresholds.
+    limits](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Absolutelimits)
+    when raw data are out of plausible range.
+-   \_skewkurt_sf, \_skewkurt_hf, \_skewkurt: check of [skewness and
+    kurtosis](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Skewnessandkurtosis)
+    limits.
+-   \_discont_sf, \_discont_hf, \_discont: check of
+    [discontinuities](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Discontinuities)
+    that lead to semi-permanent changes in the time series.
+-   \_timelag_sf, \_timelag_hf, \_timelag: check of estimated
+    [timelags](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Timelags)
+    compared to the expected timelags.
+-   \_attangle: check of [angle of
+    attack](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Angleofattack).
+-   \_nonsteady: check of [steadiness of horizontal
+    wind](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Steadinessofhorizontalwind).
 -   \_missfrac: check of missing data in averaging period against
     thresholds.
 -   \_scf: check of spectral correction factor against thresholds.
--   \_wresid: check of mean unrotated w (double rotation) or w residual
-    (planar fit) against thresholds.
--   \_thr_X: user-defined thresholds for a variable X
-    (e.g. \_thr_tsvar).
+-   \_wresid: check of mean unrotated *w* (double rotation) or *w*
+    residual (planar fit) against thresholds.
 -   \_runs: check of runs with repeating values.
--   \_lowcov: threshold test for unreasonably low fluxes (assuming
-    issues during covariance computation).
+-   \_lowcov: check of fluxes too close to zero (assuming issues during
+    covariance computation).
+-   \_var: check of variances against thresholds.
+-   \_LI7200: check of CO2 and H2O signal strength against thresholds.
 -   \_interdep: flux interdependency.
 -   \_man: manual quality control.
 -   \_spikesLF: identification of likely outliers in low frequency data.
@@ -253,9 +274,7 @@ They specify which QC test/filter was applied to get the QC flags:
 -   \_forGF: the composite QC column used to screen fluxes for
     gap-filling combining selected above test/filter results.
 
-Note that \_abslim and \_spikesHF have thresholds set already within
-`EddyPro`. Thus change of thresholds can be achieved only by additional
-raw data re-processing.
+For details see documentation of `extract_QC()`.
 
 `REddyProc` naming strategy is available at [MPI Online Tool
 website](https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput).
@@ -297,7 +316,23 @@ cases should be excluded.
 ## References
 
 Publication describing `openeddy` is not yet available. When describing
-the proposed quality control scheme, please refer to it as similar to:
+the proposed quality control scheme, please refer to:
+
+McGloin, R., Sigut, L., Havrankova, K., Dusek, J., Pavelka, M., Sedlak,
+P., 2018. Energy balance closure at a variety of ecosystems in Central
+Europe with contrasting topographies. Agric. For. Meteorol. 248,
+418-431. <https://doi.org/10.1016/j.agrformet.2017.10.003>
+
+Other references relevant to the applied quality control:
+
+Foken, T., Wichura, B., 1996. Tools for quality assessment of
+surface-based flux measurements. Agric. For. Meteorol. 78, 83–105.
+<https://doi.org/10.1016/0168-1923(95)02248-1>
+
+Vickers, D. and Mahrt, L., 1997. Quality Control and Flux Sampling
+Problems for Tower and Aircraft Data. Journal of Atmospheric and Oceanic
+Technology, 14(3), 512-526.
+<https://doi.org/10.1175/1520-0426(1997)014>\<0512:QCAFSP\>2.0.CO;2
 
 Mauder, M., Cuntz, M., Drüe, C., Graf, A., Rebmann, C., Schmid, H.P.,
 Schmidt, M., Steinbrecher, R., 2013. A strategy for quality and

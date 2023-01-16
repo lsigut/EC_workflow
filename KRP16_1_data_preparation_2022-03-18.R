@@ -3,10 +3,10 @@
 # Eddy covariance workflow part 1/4 (https://github.com/lsigut/EC_workflow) This
 # code primarily aims at data preparation for quality control (QC). Meteo data
 # and EddyPro full output files are validated, accordingly formatted, merged and
-# saved. All numeric values are rounded to a reasonable precision. Meteo
-# variable names are remapped according to Czechglobe standards. If Meteo
-# contains replicates of the same variable, mean of all replicates and their QC
-# is returned. 
+# saved with documentation. All numeric values are rounded to a reasonable
+# precision. Meteo variable names are remapped according to the requirements of
+# openeddy and REddyProc packages. If Meteo contains replicates of the same
+# variable, mean of all replicates and their QC is returned.
 #
 # For documentation of EddyPro variable names see:
 # https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html
@@ -59,6 +59,7 @@ year <- 2016
 # Edit the folder name including meteo data
 # - this folder is created by the user and can contain multiple MeteoDBS files
 #   that will be merged along regular timestamp - check merge_eddy()
+# - only CSV (csv) files found in the folder will be used
 # - the path is difficult to standardize because it might depend on processing
 #   versioning (e.g. .../EddyProOutput/Run2/Meteo data/)
 # - MeteoDBS groups checklist (30 min): 
@@ -72,6 +73,9 @@ Meteo_path <- "./Level 1/Post-processing/EddyProOutput/Meteo data/"
 # Edit the folder name including EddyPro data
 # - this folder is created by the user and can contain multiple EddyPro files
 #   that will be merged along regular timestamp - check merge_eddy()
+# - folder is expected to contain CSV (csv) files with EddyPro data to merge and
+#   optionally also TXT (txt) files with their documentation; their file names 
+#   should differ only in their file extension
 # - the path is difficult to standardize because it might depend on processing
 #   versioning (e.g. .../EddyProOutput/Run2/EddyPro data/)
 EP_path <- "./Level 1/Post-processing/EddyProOutput/EddyPro data/"
@@ -183,50 +187,20 @@ openeddy::units(data) <- c(openeddy::units(M), openeddy::units(EP[-1]))
 
 # Save the merged data with documentation ======================================
 
-# Names of merged output files
-# - data in CSV files and documentation in TXT files
-data_name_out <- list.files(EP_path)
-data_name_out <- grep("[.][Cc][Ss][Vv]$", data_name_out, value = TRUE)
-if (length(data_name_out) == 1) {
-  data_name_out <- gsub("[.][Cc][Ss][Vv]$", "_met.csv", data_name_out)
-} else {
-  data_name_out <- paste0("eddypro_", siteyear, 
-                      "_full_output_merged_adv_met.csv")
-}
-docu_name_out <- gsub("[.][Cc][Ss][Vv]$", "\\.txt", data_name_out)
+# Set the name of merged output file
+data_name_out <- name_merged(EP_path, siteyear)
 
 # Save the merged Meteo and EddyPro data
 write_eddy(data, file.path(out_path, data_name_out))
 
-# Combine documentation
-EP_names <- list.files(EP_path, full.names = TRUE)
-EP_names <- grep("[.][Cc][Ss][Vv]$", EP_names, value = TRUE)
-M_names <- list.files(Meteo_path, full.names = TRUE)
-M_names <- grep("[.][Cc][Ss][Vv]$", M_names, value = TRUE)
-
-docu_name_in <- list.files(c(EP_path, Meteo_path), full.names = TRUE)
-docu_name_in <- grep("[.][Tt][Xx][Tt]$", docu_name_in, value = TRUE)
-
-# The documentation file will not be overwritten if it already exists
-# - this is to avoid overwriting manually edited documentation
-# - to overwrite it, check file content and delete it manually if safe
-if (docu_name_out %in% list.files(out_path)) {
-  message("Combined documentation already exists")
-} else {
-  writeLines(c(paste0(Tstamp, ":"),
-               paste0("Files merged by ", name, " (", mail, ")"),
-               "",
-               "Merged files:", 
-               M_names,
-               EP_names,
-               "",
-               "Variables from meteo database remapped to:",
-               paste(names(M), varnames(M), sep = " = ", collapse = "\n"), 
-               "", 
-               combine_docu(docu_name_in),
-               "Information about the R session:",
-               capture.output(sessionInfo())), 
-             file.path(out_path, docu_name_out), sep = "\n")
-}
+# Documentation of merged files
+# - TXT files with the same name as the merged input CSV files are used if 
+#   present in respective folders with input data
+# - information about the Meteo remapping and session info are also included
+# - the documentation file will not be overwritten if it already exists, this is
+#   to avoid overwriting manually edited documentation; to overwrite it, check 
+#   file content and delete it manually if safe
+document_merged(data_name_out, EP_path, Meteo_path, out_path, Tstamp, name, 
+                mail, M)
 
 # EOF

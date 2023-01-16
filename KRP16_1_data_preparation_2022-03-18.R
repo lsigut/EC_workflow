@@ -67,19 +67,19 @@ year <- 2016
 #   3) Moisture: Ma (from EC height), Ms (from the top soil layer) 
 #   4) Precipitation: sumP
 #   5) Heat flux: HF
-Meteo_path <- "./Level 1/Post-processing/EddyPro Output/Meteo data/"
+Meteo_path <- "./Level 1/Post-processing/EddyProOutput/Meteo data/"
 
 # Edit the folder name including EddyPro data
 # - this folder is created by the user and can contain multiple EddyPro files
 #   that will be merged along regular timestamp - check merge_eddy()
 # - the path is difficult to standardize because it might depend on processing
 #   versioning (e.g. .../EddyProOutput/Run2/EddyPro data/)
-EP_path <- "./Level 1/Post-processing/EddyPro Output/EddyPro data/"
+EP_path <- "./Level 1/Post-processing/EddyProOutput/EddyPro data/"
 
 # Edit the folder name for output files (data)
 # - the path is difficult to standardize because it might depend on processing
 #   versioning (e.g. .../EddyProOutput/Run2)
-out_path <- "./Level 1/Post-processing/EddyPro Output/"
+out_path <- "./Level 1/Post-processing/EddyProOutput/"
 
 # Timestamp of the computation
 # - automated, will be included in file names
@@ -116,11 +116,11 @@ Met_mapping <- tribble(
 # path and merges them together. The expectation is that files represent meteo
 # variables for given site and different periods. Function merges them
 # vertically (along generated complete timestamp). Original column names are
-# retained for reliable variable remapping. See details in utilities.R file.
+# retained for reliable variable remapping.
 M <- read_MeteoDBS(Meteo_path, start = year, end = year)
 
-# Rename Meteo data variables to FLUXNET standard
-# - other columns than those required are removed
+# Rename Meteo data variables as required by openeddy and REddyProc packages
+# - other columns than those included in Met_mapping table are dropped
 # - not available columns are reported and automatically initialized with NAs
 M <- remap_vars(M, Met_mapping$workflow_varname, Met_mapping$MeteoDBS_varname,
                 regexp = TRUE, qc = "_qcode")
@@ -141,9 +141,9 @@ openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
 # - set correct skip parameter (number of lines above header in the input)
 # - set correct file encoding (e.g. fileEncoding = "UTF-8") 
 # - make sure that all files have the same encoding
-# - EddyPro output contains duplicated column names "co2_mean" and "h2o_mean"
-#   that are respective concentrations in different units (their correct match
-#   across files is not automated)
+# - included EddyPro output contains duplicated column names "co2_mean" and 
+#   "h2o_mean" that are respective concentrations in different units (their
+#   correct match across files is not automated)
 # - older versions of EddyPro had more duplicated column names in the output
 # - old EddyPro column name "max_speed" is corrected to "max_wind_speed" 
 EP <- read_EddyPro(EP_path, start = year, end = year, skip = 1, 
@@ -196,7 +196,7 @@ if (length(data_name_out) == 1) {
 docu_name_out <- gsub("[.][Cc][Ss][Vv]$", "\\.txt", data_name_out)
 
 # Save the merged Meteo and EddyPro data
-write_eddy(data, paste0(out_path, "/", data_name_out))
+write_eddy(data, file.path(out_path, data_name_out))
 
 # Combine documentation
 EP_names <- list.files(EP_path, full.names = TRUE)
@@ -226,7 +226,7 @@ if (docu_name_out %in% list.files(out_path)) {
                combine_docu(docu_name_in),
                "Information about the R session:",
                capture.output(sessionInfo())), 
-             paste0(out_path, "/", docu_name_out), sep = "\n")
+             file.path(out_path, docu_name_out), sep = "\n")
 }
 
 # EOF

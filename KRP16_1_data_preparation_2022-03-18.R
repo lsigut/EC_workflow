@@ -6,7 +6,11 @@
 # saved with documentation. All numeric values are rounded to a reasonable
 # precision. Meteo variable names are remapped according to the requirements of
 # openeddy and REddyProc packages. If Meteo contains replicates of the same
-# variable, mean of all replicates and their QC is returned.
+# variable, mean of all replicates and their QC is returned. It is expected that
+# Meteo data underwent separate quality control and gap-filling (not in the
+# scope of openeddy). Notice that especially gaps in incoming radiation (PAR or
+# shortwave radiation) can have negative impact on the reliability and quality
+# of the final products.
 #
 # For documentation of EddyPro variable names see:
 # https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html

@@ -160,7 +160,11 @@ ggsave(file.path(
 # Edit w_rot_correction value that will be substracted from w_rot
 # - if w_rot does not require correction, set "none"
 # - if rotation_type == "double", w_rot_correction is not considered
-w_rot_correction <- "none" 
+w_rot_correction <- "none"
+
+# Store original value of w_rot_correction for documentation purposes
+# - once correction is applied, w_rot_correction is set to "none"
+applied_w_rot_correction <- w_rot_correction
 
 # Skip if w_rot_correction = "none"
 if (!w_rot_correction == "none" && rotation_type == "planar fit") {

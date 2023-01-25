@@ -1,14 +1,13 @@
 ### Description ================================================================
 
-# Eddy covariance workflow part 2/4 (https://github.com/lsigut/EC_workflow)
-# This code primarily aims at data quality checking (QC) and preparation of
-# input data for gap-filling. EddyPro and Meteo data inputs are merged and
-# reformatted. If Meteo contains replicates of the same variable, mean of all
-# replicates and their QC is returned. Data before and after QC are plotted and
-# further statistics are computed. Storage correction and correction of rotated
+# Eddy covariance workflow part 2/4 (https://github.com/lsigut/EC_workflow) This
+# code primarily aims at data quality checking (QC) and preparation of input
+# data for gap-filling. Data before, during and after QC are plotted and further
+# statistics are computed. Intermediate results are plotted or reported in
+# console to assist the user. Storage correction and correction of rotated
 # vertical wind speed (w_rot) is optional and overwrites the original values of
 # respective variables.
-# 
+#
 # For documentation of EddyPro variable names see:
 # https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html
 #
@@ -38,9 +37,9 @@ invisible(lapply(packages, attach_pkg))
 
 # Workflow is currently aligned only with specific package version
 # - package version should be neither higher or lower
-if (packageVersion("openeddy") < "0.0.0.9007")
+if (packageVersion("openeddy") < "0.0.0.9008")
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9007' and above")
+          "'0.0.0.9008' and above")
 
 ### Provide metadata and set file paths and arguments ==========================
 
@@ -98,7 +97,8 @@ Tstamp <- format(Sys.time(), "%Y-%m-%d")
 
 # Set Fetch filter boundary ====================================================
 
-# BKF boundary version 20160206
+# Edit the region of interest boundary for your site
+# - here KRP boundary version 20160206
 # - see ROI boundary concept description at https://github.com/lsigut/EC_workflow
 boundary <- 
   c(453, 489, 469, 455, 444, 410, 375, 348, 86, 82, 78, 76, 74, 73, 72, 72, 73, 
@@ -109,9 +109,9 @@ boundary <-
 
 ### Load and format data =======================================================
 
-# Required inputs are meteo and EddyPro data merged in the previous 
-# >data preparation< processing step to a single validated CSV file
-data <- read_eddy("./Level 1/Post-processing/EddyPro Output/eddypro_KrP_full_output_2017-05-20T180735_adv_met.csv")
+# Edit the path to required inputs - these are meteo and EddyPro data merged in
+# the previous >data preparation< processing step to a single validated CSV file
+data <- read_eddy("./Level 1/Post-processing/EddyProOutput/eddypro_KrP_full_output_2017-05-20T180735_adv_met.csv")
 
 # Convert timestamp to POSIXct and shift the date-time information to represent 
 # the center of averaging period which is required for reliable processing
@@ -119,41 +119,19 @@ data$timestamp <- strptime_eddy(data$timestamp, shift.by = shift.by)
 
 ### Plot data for visual precheck ==============================================
 
-# Display variables that can help identify problems with instruments
-precheck <- c("u_rot", "v_rot", "w_unrot", "w_rot", "sonic_temperature", 
-              "max_wind_speed",
-              "Tau", "ustar", "H", "LE", "NEE", 
-              "u_var", "v_var", "w_var", "ts_var", "h2o_var", "co2_var",
-              "rand_err_Tau", "rand_err_H", "rand_err_LE", "rand_err_NEE",
-              "Tau_scf", "H_scf", "LE_scf", "co2_scf",
-              "u_spikes", "v_spikes", "w_spikes", "ts_spikes", "co2_spikes", 
-              "h2o_spikes",
-              "H_strg", "LE_strg", "co2_strg",
-              "h2o_v_adv", "co2_v_adv",
-              "co2_mixing_ratio", "h2o_mixing_ratio", 
-              "co2_time_lag", "h2o_time_lag",
-              "x_peak", "x_70perc",
-              "mean_value_RSSI_LI_7200", "co2_signal_strength_7200_mean",
-              "h2o_signal_strength_7200_mean", "flowrate_mean")
+# Save plots of variables that can help identify problems with instruments
+# - precheck_vars is an object defined within openeddy
+# - choose only names available in data
+precheck <- choose_avail(precheck_vars, names(data))
 
-# Make sure that precheck names are available in data
-# - message listing such names will be printed if any not available
-precheck <- choose_avail(names(data), precheck)
-
-# Save precheck plots to single pdf
-# - qrange is quantile range for ylim to reduce impact of outliers 
-pdf(file.path(
-  paths$Precheck, 
-  paste0(siteyear, "_auxiliary_precheck_", Tstamp, ".pdf")), 
-  width = 11.00, height = 8.27)
-invisible(lapply(precheck, plot_precheck, x = data, qrange = c(0.005, 0.995)))
-dev.off()
+# Save plots of precheck variable to single pdf at paths$Precheck
+save_precheck_plots(data, precheck, siteyear, Tstamp, paths$Precheck)
 
 # Show dependence of w_unrot on wind direction with additional statistics
 # - to reduce sensitivity of computed stats to outliers, median and mad is used
 # - qrange is quantile range for ylim to reduce impact of outliers
 #   - qrange has only visual effect, it does not affect computed statistics 
-#   - if you do not want to limit y-axis, set qrange = NULL or qrange = c(0, 1)
+#   - if you do not want to limit y-axis, set qrange = NULL
 ggsave(file.path(
   paths$WD_dependency,
   paste0(siteyear, "_w_unrot_WD_stats_", Tstamp, ".png")),
@@ -196,44 +174,32 @@ if (!w_rot_correction == "none" && rotation_type == "planar fit") {
   w_rot_correction <- "none" # avoid rerunning of the correction by mistake
 }
 
+# Specify the vector of supported flux names used repeatedly within workflow 
+fluxes <- c("Tau", "H", "LE", "NEE")
+
 # Save flux time series precheck plots with distinguished QC along basic meteo 
-for (i in c("Tau", "H", "LE", "NEE")) {
-  pdf(file.path(
-    paths$Precheck,
-    paste0(siteyear, "_", i, "_precheck_", Tstamp, ".pdf")), 
-    width = 11.00, height = 8.27)
-  plot_eddy(data, i, paste0("qc_", i, "_SSITC"), paste0("qc_", i, "_SSITC"))
-  dev.off()
-}
+# - SSITC is the standard "Foken flag" (e.g. qc_H) from EddyPro renamed by 
+#   correct() within data_preparation workflow
+save_flux_plots(data, "SSITC", siteyear, "%s_precheck", Tstamp, paths$Precheck, 
+                fluxes)
 
 ### Extract flags of predefined tests/filters ==================================
 
-### User should decide how wresid filter is handled 
-#     - only for short canopy sites with setting rotation == "double"?
-#     - excessive flagging for sites with rotation == "planar fit"?
-#     - needs further testing, possibly rotation == "double" for all sites?
-#     - is the excessive flagging for "planar fit" due to insufficient rotation?
+# A set of filters is extracted that may or may not be useful to apply at a
+# given site
+# - it is suggested to experiment with the setup to get optimal results
+# - applied filters in this workflow seem to be a practical combination but 
+#   they should be further tested considering their flagging efficiency 
+
+# Notes for wresid filter:
+# - recommended only for short canopy sites with setting rotation == "double"
+# - typically excessive flagging for sites with rotation == "planar fit"
+# - needs further testing
 QC <- extract_QC(data, rotation = rotation_type)
 summary_QC(QC, names(QC))
 
 # Save the results to the main data frame
 data[names(QC)] <- QC 
-
-### Extract user-specified flags ===============================================
-
-# H fluxes are not reliable if sonic temperature variance is above 2
-data$qc_H_thr_tsvar <- apply_thr(data$ts_var, c(2, 2), flag = "higher")
-
-# Fluxes that form runs of equal values are likely spurious
-data$qc_Tau_runs <- flag_runs(data$Tau)
-data$qc_H_runs <- flag_runs(data$H)
-data$qc_LE_runs <- flag_runs(data$LE)
-data$qc_NEE_runs <- flag_runs(data$NEE)
-
-# Fluxes with too low covariance are likely spurious
-data$qc_H_lowcov <- apply_thr(data$H, c(-0.005, 0.005), flag = "between")
-data$qc_LE_lowcov <- apply_thr(data$LE, c(-0.005, 0.005), flag = "between")
-data$qc_NEE_lowcov <- apply_thr(data$NEE, c(-0.005, 0.005), flag = "between")
 
 ### Combine flags representing mainly technical issues with fluxes =============
 
@@ -245,23 +211,22 @@ prelim <- tribble(
   "qc_SA_spikesHF",  "qc_SA_spikesHF", "qc_SAGA_spikesHF", "qc_SAGA_spikesHF",  
   "qc_Tau_missfrac", "qc_H_missfrac",  "qc_LE_missfrac",   "qc_NEE_missfrac",
   "qc_Tau_scf",      "qc_H_scf",       "qc_LE_scf",        "qc_NEE_scf",
-  NA,                "qc_H_thr_tsvar", NA,                 NA,
+  NA,                "qc_H_var",       NA,                 NA,
   "qc_Tau_runs",     "qc_H_runs",      "qc_LE_runs",       "qc_NEE_runs",
   NA,                "qc_H_lowcov",    "qc_LE_lowcov",     "qc_NEE_lowcov",
+  NA,                NA,               "qc_GA_LI7200",     "qc_GA_LI7200", 
   "qc_ALL_wresid",   "qc_ALL_wresid",  "qc_ALL_wresid",    "qc_ALL_wresid"
 )
 
 # Combine specified flags for given flux to produce preliminary flags
-pre_res <- sapply(names(prelim), 
-                  function(x) combn_QC(data, na.omit(pull(prelim, x))))
-pre_res <- as.data.frame(pre_res)
+pre_res <- combn_prelim_QC(data, prelim)
 
 ### Apply flux interdependency =================================================
 
 # Evaluate flux interdependency based on the preliminary flags
 # - preliminary H flag is needed only if IRGA = "open", otherwise not used
 # - preliminary Tau flag is not used
-interdep <- interdep(pre_res$LE, pre_res$H, IRGA_type)
+interdep <- interdep(pre_res$qc_LE_prelim, pre_res$qc_H_prelim, IRGA_type)
 summary_QC(interdep, names(interdep))
 
 # Save the results to the main data frame
@@ -280,35 +245,18 @@ prelim_ad <- tribble(
 prelim2 <- rbind(prelim, prelim_ad)
 
 # Combine specified flags for given flux to produce preliminary flags
-# - informative naming is useful during later despiking stage
-pre2_res <- sapply(names(prelim2), 
-                   function(x) combn_QC(data, na.omit(pull(prelim2, x))))
-pre2_res <- as.data.frame(pre2_res)
-names(pre2_res) <- paste0("qc_", names(pre2_res), "_prelim2")
+pre2_res <- combn_prelim_QC(data, prelim2)
 
-# Show effect of flux interdependency test on QC flags
-# - no effect on Tau flags (flux interdependency not defined for Tau) 
-# - no effect on LE flags if IRGA_type == "en_closed"
 if (interactive_session) {
-  gridExtra::grid.arrange(grobs = lapply(names(prelim2), function(x) 
-    summary_QC(data, na.omit(pull(prelim2, x)), plot = TRUE, flux = x)), 
-    nrow = 2)
-  gridExtra::grid.arrange(grobs = lapply(names(prelim2), function(x) 
-    summary_QC(data, na.omit(pull(prelim2, x)), 
-               plot = TRUE, cumul = TRUE, flux = x)), nrow = 2)
-}
-
-# Update flux time series precheck plots according to prelim2 QC flags
-if (interactive_session) {
-  for (i in c("Tau", "H", "LE", "NEE")) {
-    pdf(file.path(
-      paths$Precheck,
-      paste0(siteyear, "_", i, "_precheck_", Tstamp, ".pdf")), 
-      width = 11.00, height = 8.27)
-    plot_eddy(cbind(data, pre2_res), i, 
-              paste0("qc_", i, "_prelim2"), paste0("qc_", i, "_prelim2"))
-    dev.off()
-  }
+  # Show effect of flux interdependency test on QC flags
+  # - no effect on Tau flags (flux interdependency not defined for Tau) 
+  # - no effect on LE flags if IRGA_type == "en_closed"
+  plot_QC_summary(data, prelim2, cumul = FALSE)
+  plot_QC_summary(data, prelim2, cumul = TRUE)
+  
+  # Update flux time series precheck plots according to prelim2 QC flags
+  save_flux_plots(cbind(data, pre2_res), "prelim2", siteyear, "%s_precheck",
+                  Tstamp, paths$Precheck, fluxes)
 }
 
 ### Apply storage correction ===================================================
@@ -326,25 +274,33 @@ if (apply_storage) {
   apply_storage <- FALSE # avoid rerunning of the correction by mistake
 }
 
+### Apply prelim2 filters to fluxes ============================================
+
+# Produce flux columns with suffix "_orig" only with fluxes passing previous QC 
+orig_fluxes <- sapply(fluxes, function(x) paste0(x, "_orig")) 
+for (i in seq_along(fluxes)) {
+  data[orig_fluxes[i]] <- apply_QC(data[, fluxes[i]], pre2_res[, i])
+}
+
 ### Extract flags based on low frequency data despiking ========================
-desp <- list(qc_H_spikesLF = NULL, qc_LE_spikesLF = NULL, qc_NEE_spikesLF = NULL)
+desp <- data[0]
 
 # Low frequency data despiking is not applied for Tau
-plot_precheck(data, "H", qrange = c(0.006, 0.99), pch = 19)
+# - change qrange if needed
+plot_precheck(data, "H_orig", qrange = c(0, 1), pch = 19)
 desp$qc_H_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "H", qc_flag = "qc_H_prelim2",
             name_out = "qc_H_spikesLF", var_thr = c(-200, 800))
 
-plot_precheck(data, "LE", pch = 19)
+plot_precheck(data, "LE_orig", qrange = c(0, 1), pch = 19)
 desp$qc_LE_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "LE", qc_flag = "qc_LE_prelim2",
             name_out = "qc_LE_spikesLF", var_thr = c(-200, 800))
 
-plot_precheck(data, "NEE", pch = 19)
+plot_precheck(data, "NEE_orig", qrange = c(0.005, 0.995), pch = 19)
 desp$qc_NEE_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "NEE", qc_flag = "qc_NEE_prelim2",
             name_out = "qc_NEE_spikesLF", var_thr = c(-100, 100))
-desp <- as.data.frame(desp)
 
 # Check the results
 # - the test has 3 outcomes: 0 - OK; 2 - spike; NA - excluded from despiking
@@ -374,33 +330,23 @@ prelim2_ad <- tribble(
 prelim3 <- rbind(prelim2, prelim2_ad)
 
 # Combine specified flags for given flux to produce preliminary flags
-# - informative naming is useful during later manual QC stage
-pre3_res <- sapply(names(prelim3), 
-                   function(x) combn_QC(data, na.omit(pull(prelim3, x))))
-pre3_res <- as.data.frame(pre3_res)
-names(pre3_res) <- paste0("qc_", names(pre3_res), "_prelim3")
+pre3_res <- combn_prelim_QC(data, prelim3)
 
-# Show effect of all filters before manual QC
 if (interactive_session) {
-  gridExtra::grid.arrange(grobs = lapply(names(prelim3), function(x) 
-    summary_QC(data, na.omit(pull(prelim3, x)), plot = TRUE, flux = x)), 
-    nrow = 2)
-  gridExtra::grid.arrange(grobs = lapply(names(prelim3), function(x) 
-    summary_QC(data, na.omit(pull(prelim3, x)), 
-               plot = TRUE, cumul = TRUE, flux = x)), nrow = 2)
+  # Show effect of all filters before manual QC
+  plot_QC_summary(data, prelim3, cumul = FALSE)
+  plot_QC_summary(data, prelim3, cumul = TRUE)
+
+  # Update flux time series precheck plots according to prelim3 QC flags
+  save_flux_plots(cbind(data, pre3_res), qc_suffix = "prelim3", siteyear, 
+                  "%s_precheck", Tstamp, paths$Precheck, fluxes)
 }
 
-# Update flux time series precheck plots according to prelim3 QC flags
-if (interactive_session) {
-  for (i in c("Tau", "H", "LE", "NEE")) {
-    pdf(file.path(
-      paths$Precheck,
-      paste0(siteyear, "_", i, "_precheck_", Tstamp, ".pdf")), 
-        width = 11.00, height = 8.27)
-    plot_eddy(cbind(data, pre3_res), i, 
-              paste0("qc_", i, "_prelim3"), paste0("qc_", i, "_prelim3"))
-    dev.off()
-  }
+### Apply prelim3 filters to fluxes ============================================
+
+# Produce flux columns with suffix "_orig" only with fluxes passing previous QC 
+for (i in seq_along(fluxes)) {
+  data[orig_fluxes[i]] <- apply_QC(data[, fluxes[i]], pre3_res[, i])
 }
 
 ### Run manual quality control =================================================
@@ -417,9 +363,9 @@ if (interactive_session) {
 # - if not interactive and no manual QC found: NULL returned 
 man <- check_manually(cbind(data, pre3_res), paths$Quality_checking, 
                       vars = data.frame(
-                        x = c("Tau", "H", "LE", "NEE"),
+                        x = fluxes,
                         y = c("PAR", "Rn", "Rn", "PAR"),
-                        z = c("wind_speed", "LE" , "H", "Tair")
+                        z = c("wind_speed", "LE_orig" , "H_orig", "Tair")
                       ), 
                       qc_prefix = "qc_", qc_suffix = "_prelim3", 
                       interactive_session, siteyear)[-1]
@@ -434,44 +380,36 @@ data[names(man)] <- man
 
 # Consider only existing manual flags
 # - there might be variables without manual QC or 'man' can be NULL
-mnames <- paste0("qc_", c("Tau", "H", "LE", "NEE"), "_man")
-names(mnames) <- c("Tau", "H", "LE", "NEE")
-is.na(mnames) <- !(mnames %in% names(man))
-mnames <- as.list(mnames)
+man_names <- set_man_names(fluxes, man)
 
 # Include manual QC among QC filter names to combine
 prelim3_ad <- tribble(
-  ~Tau,       ~H,       ~LE,       ~NEE,
-  mnames$Tau, mnames$H, mnames$LE, mnames$NEE
+  ~Tau,          ~H,          ~LE,          ~NEE,
+  man_names$Tau, man_names$H, man_names$LE, man_names$NEE
 )
 
 prelim4 <- rbind(prelim3, prelim3_ad)
 
 # Combine specified flags for given flux to produce preliminary flags
-# - informative naming is useful during possible additional manual QC
-pre4_res <- sapply(names(prelim4), 
-                   function(x) combn_QC(data, na.omit(pull(prelim4, x))))
-pre4_res <- as.data.frame(pre4_res)
-names(pre4_res) <- paste0("qc_", names(pre4_res), "_prelim4")
+pre4_res <- combn_prelim_QC(data, prelim4)
 
-# Update flux time series precheck plots according to prelim4 QC flags
 if (interactive_session) {
-  for (i in c("Tau", "H", "LE", "NEE")) {
-    pdf(file.path(
-      paths$Precheck,
-      paste0(siteyear, "_", i, "_precheck_", Tstamp, ".pdf")), 
-      width = 11.00, height = 8.27)
-    plot_eddy(cbind(data, pre4_res), i, 
-              paste0("qc_", i, "_prelim4"), paste0("qc_", i, "_prelim4"))
-    dev.off()
-  }
+  # Update flux time series precheck plots according to prelim4 QC flags
+  save_flux_plots(cbind(data, pre4_res), qc_suffix = "prelim4", siteyear, 
+                  "%s_precheck", Tstamp, paths$Precheck, fluxes)
+}
+
+# Apply prelim4 filters to fluxes
+# - produce flux columns with suffix "_orig" only with fluxes passing previous QC 
+for (i in seq_along(fluxes)) {
+  data[orig_fluxes[i]] <- apply_QC(data[, fluxes[i]], pre4_res[, i])
 }
 
 man <- check_manually(cbind(data, pre4_res), paths$Quality_checking, 
                       vars = data.frame(
-                        x = c("Tau", "H", "LE", "NEE"),
+                        x = fluxes,
                         y = c("PAR", "Rn", "Rn", "PAR"),
-                        z = c("wind_speed", "LE" , "H", "Tair")
+                        z = c("wind_speed", "LE_orig" , "H_orig", "Tair")
                       ), 
                       qc_prefix = "qc_", qc_suffix = "_prelim4", 
                       interactive_session, siteyear)[-1]
@@ -484,27 +422,28 @@ data[names(man)] <- man
 
 # Consider only existing manual flags
 # - there might be variables without manual QC or 'man' can be NULL
-mnames <- paste0("qc_", c("Tau", "H", "LE", "NEE"), "_man")
-names(mnames) <- c("Tau", "H", "LE", "NEE")
-is.na(mnames) <- !(mnames %in% names(man))
-mnames <- as.list(mnames)
+man_names <- set_man_names(fluxes, man)
 
 # Include manual QC among QC filter names to combine
 prelim3_ad <- tribble(
-  ~Tau,       ~H,       ~LE,       ~NEE,
-  mnames$Tau, mnames$H, mnames$LE, mnames$NEE
+  ~Tau,          ~H,          ~LE,          ~NEE,
+  man_names$Tau, man_names$H, man_names$LE, man_names$NEE
   )
 
 forGF <- rbind(prelim3, prelim3_ad)
 
 # Combine specified flags for given flux to produce final forGF flags
-forGF_res <- sapply(names(forGF), 
-                   function(x) combn_QC(data, na.omit(pull(forGF, x))))
-forGF_res <- as.data.frame(forGF_res)
-names(forGF_res) <- paste0("qc_", names(forGF_res), "_forGF")
+forGF_res <- combn_prelim_QC(data, forGF)
 
 # Save the results to the main data frame
 data[names(forGF_res)] <- forGF_res 
+
+### Apply forGF filters to fluxes ==============================================
+
+# Produce flux columns with suffix "_orig" only with fluxes passing final QC 
+for (i in seq_along(fluxes)) {
+  data[orig_fluxes[i]] <- apply_QC(data[, fluxes[i]], forGF_res[, i])
+}
 
 ### Produce QC summary and save and plot the results ===========================
 
@@ -526,37 +465,13 @@ for (i in names(list_QC)) {
 }
 
 # Save the QC summary results as plots
-plot_QC_ind <- lapply(names(forGF), function(x) 
-  summary_QC(data, na.omit(pull(forGF, x)), plot = TRUE, flux = x))
-plot_QC_cum <- lapply(names(forGF), function(x) 
-  summary_QC(data, na.omit(pull(forGF, x)), plot = TRUE, cumul = TRUE, flux = x))
-
-ggsave(file.path(
-  paths$QC_summary,
-  paste0(siteyear, "_QC_summary_", Tstamp, ".png")),
-  gridExtra::grid.arrange(grobs = plot_QC_ind, nrow = 2),
-  type = "cairo-png", width = 297, height = 210, units = "mm")
-ggsave(file.path(
-  paths$QC_summary,
-  paste0(siteyear, "_QC_summary_cumulative_", Tstamp, ".png")),
-  gridExtra::grid.arrange(grobs = plot_QC_cum, nrow = 2),
-  type = "cairo-png", width = 297, height = 210, units = "mm")
+save_QC_summary_plots(data, forGF, paths$QC_summary, siteyear, Tstamp)
 
 ### Plot the quality checked data ==============================================
 
-# Select the desired QC flags for plotting of respective fluxes
-QC_plt <- names(forGF_res)
-names(QC_plt) <- names(forGF)
-
 # Save the plots that show the data with QC flag used for gap-filling
-for (i in names(QC_plt)) {
-  pdf(file.path(
-    paths$Quality_checking,
-    paste0(siteyear, "_forGF_QC_", i, "_", Tstamp, ".pdf")),
-    width = 11.00, height = 8.27)
-  plot_eddy(data, i, QC_plt[[i]], QC_plt[[i]])
-  dev.off()
-}
+save_flux_plots(data, qc_suffix = "forGF", siteyear, "forGF_QC_%s", Tstamp, 
+                paths$Quality_checking, fluxes)
 
 ### Write QC results to a file =================================================
 
@@ -592,22 +507,13 @@ write_eddy(save_data,
            file.path(
              paths$Quality_checking,
              paste0(siteyear, "_forGF_QC_full_output_", Tstamp, ".csv")))
-           
-# Save essential output
-essentials <- c(
-  "timestamp", "GR", "qc_GR", "PAR", "qc_PAR", "Rn", "qc_Rn", "Tair",
-  "qc_Tair", "Tsoil", "qc_Tsoil", "RH", "qc_RH", "VPD", "qc_VPD", "SWC",
-  "qc_SWC", "P", "qc_P", "G", "qc_G", "Tau", "qc_Tau_forGF", "qc_Tau_SSITC",
-  "rand_err_Tau", "H", "qc_H_forGF", "qc_H_SSITC", "rand_err_H", "LE",
-  "qc_LE_forGF", "qc_LE_SSITC", "rand_err_LE", "NEE", "qc_NEE_forGF",
-  "qc_NEE_SSITC", "rand_err_NEE", "H_strg", "LE_strg", "co2_strg", "wind_speed",
-  "wind_dir", "ustar", "L", "zeta", "model", "x_peak", "x_70perc")
 
-# Show which names are not available in the object save_data
+# Choose the most important variables to later combine with gap-filling results
+# - essential_vars_QC is an object defined within openeddy
 # - use only those that are available
-essentials <- choose_avail(names(save_data), essentials)
+essentials <- choose_avail(essential_vars_QC, names(save_data))
 
-# Save the most important variables to later combine with gap-filling results
+# Save essential output
 write_eddy(save_data[essentials],
            file.path(
              paths$Input_for_GF,
@@ -615,19 +521,6 @@ write_eddy(save_data[essentials],
 
 # Save documentation information about executed quality control 
 names(forGF) <- names(forGF_res)
-writeLines(c(paste0(Tstamp, ":"),
-             paste0("Quality controlled by ", name, " (", mail, ")"),
-             "",
-             paste0("Storage corrected fluxes: ", strg_applied),
-             "",
-             "Applied quality control scheme:", 
-             capture.output(as.data.frame(forGF)),
-             "",
-             "Information about the R session:",
-             capture.output(sessionInfo())), 
-           file.path(
-             paths$Quality_checking,
-             paste0(siteyear, '_QC_info_', Tstamp, '.txt')), 
-           sep = "\n")
-
+document_QC(Tstamp, name, mail, strg_applied, forGF,
+            paths$Quality_checking, siteyear)
 #EOF

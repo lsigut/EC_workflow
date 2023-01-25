@@ -1,7 +1,10 @@
 ### Description ================================================================
 
 # Collection of utility functions that seem to have merit only in the given
-# workflow and may or may not be moved to openeddy package.
+# workflow and may or may not be moved to openeddy package. To simplify the
+# workflow for 4 different fluxes high level functions were designed and saved
+# in 'utilities.R'. This is mostly when multiple commands should be run without
+# the need of user intervention. User can still adapt function arguments.
 #
 # Code developed by Ladislav Sigut (sigut.l@czechglobe.cz).
 
@@ -55,6 +58,7 @@ name_merged <- function(EP_path, siteyear) {
 #' @seealso \code{\link{readLines}}.
 #'
 #' @export
+#' - used in document_merged() below
 combine_docu <- function(path) {
   unlist(lapply(path, function(x) c(readLines(x, warn = FALSE), "")))
 }
@@ -102,6 +106,138 @@ document_merged <- function(data_name_out, EP_path, Meteo_path, out_path,
                  capture.output(sessionInfo())), 
                file.path(out_path, docu_name_out), sep = "\n")
   }
+}
+
+# Save plots of precheck variables in a single pdf to specified path
+# data: A data frame with column names and "timestamp" column in POSIXt format.
+# precheck: A character vector of available precheck variables.
+# siteyear: A character string specifying siteyear
+# Tstamp: A character string specifying timestamp of the computation
+# path: A character string specifying folder name for saving the pdf
+# width, height: The width and height of the graphics region in inches.
+# qrange: A numeric vector of length 2, giving the quantile range of y-axis.
+# - used in QC workflow
+save_precheck_plots <- function(data, precheck, siteyear, Tstamp, path, 
+                                width = 11.00, height = 8.27, 
+                                qrange = c(0.005, 0.995)) {
+  pdf(file.path(
+    path, 
+    paste0(siteyear, "_auxiliary_precheck_", Tstamp, ".pdf")), 
+    width = width, height = height)
+  on.exit(dev.off(), add = TRUE)
+  invisible(lapply(precheck, plot_precheck, x = data, qrange = qrange))
+}
+
+# Save plots of fluxes with meteo in separate pdfs to specified path
+# data: A data frame with column names and "timestamp" column in POSIXt format.
+# qc_suffix: A character string identifying respective QC flag included in data.
+# siteyear: A character string specifying siteyear
+# sname: A character string to be evaluated by sprintf and %s substituted for flux  
+# Tstamp: A character string specifying timestamp of the computation
+# path: A character string specifying folder name for saving the pdf
+# fluxes: A character vector of supported flux names
+# width, height: The width and height of the graphics region in inches.
+# - used in QC workflow
+save_flux_plots <- function(data, qc_suffix = "prelim", siteyear, sname,
+                            Tstamp, path, fluxes, 
+                            width = 11.00, height = 8.27) {
+  for (i in fluxes) {
+    pdf(file.path(
+      path,
+      paste0(siteyear, "_", sprintf(sname, i), "_", Tstamp, ".pdf")), 
+      width = width, height = height)
+    qc <- paste("qc", i, qc_suffix, sep = "_")
+    plot_eddy(data, i, qc, qc)
+    dev.off()
+  }
+}
+
+# Show independent or cumulative effect of all filters 
+# data: A data frame with column names. 
+# prelim: A tibble with names of quality control flags to combine
+# cumul: A logical value that determines if cumulative (cumul = TRUE) or
+#   individual (cumul = FALSE) effects of quality control flags should be shown.
+# - used in QC workflow
+plot_QC_summary <- function(data, prelim, cumul) {
+  gridExtra::grid.arrange(grobs = lapply(names(prelim), function(x) 
+    summary_QC(data, na.omit(pull(prelim, x)), cumul = cumul, plot = TRUE, 
+               flux = x)), 
+    nrow = 2)
+}
+
+# Save QC summary plots produced by plot_QC_summary()
+# data: A data frame with column names. 
+# prelim: A tibble with names of quality control flags to combine
+# path: A character string specifying folder name for saving the png
+# siteyear: A character string specifying siteyear
+# Tstamp: A character string specifying timestamp of the computation
+# width, height: The width and height of the graphics region in inches.
+# - used in QC workflow
+save_QC_summary_plots <- function(data, prelim, path, siteyear, Tstamp,
+                                  width = 297, height = 210) {
+  ggsave(file.path(
+    path,
+    paste0(siteyear, "_QC_summary_", Tstamp, ".png")),
+    plot_QC_summary(data, prelim, cumul = FALSE),
+    type = "cairo-png", width = width, height = height, units = "mm")
+  ggsave(file.path(
+    path,
+    paste0(siteyear, "_QC_summary_cumulative_", Tstamp, ".png")),
+    plot_QC_summary(data, prelim, cumul = TRUE),
+    type = "cairo-png", width = width, height = height, units = "mm")
+}
+
+# Combine specified flags for given flux to produce preliminary flags
+# - informative naming is useful e.g. for despiking and manual QC
+# data: A data frame with quality control flags specified in prelim
+# prelim: A tibble with names of quality control flags to combine
+# - used in QC workflow
+combn_prelim_QC <- function(data, prelim) {
+  res <- sapply(names(prelim), 
+                function(x) combn_QC(data, na.omit(pull(prelim, x))))
+  res <- as.data.frame(res)
+  names(res) <- paste("qc", names(res), substitute(prelim), sep = "_")
+  return(res)
+}
+
+# Set names of existing manual quality control columns
+# fluxes: A character vector containing names of supported fluxes
+# man: A data frame with manual quality control flags
+# - there might be variables without manual QC or 'man' can be NULL
+# - used in QC workflow
+set_man_names <- function(fluxes, man) {
+  mnames <- paste0("qc_", fluxes, "_man")
+  names(mnames) <- fluxes
+  is.na(mnames) <- !(mnames %in% names(man))
+  mnames <- as.list(mnames)
+  return(mnames)
+}
+
+# Document quality control step
+# - this function is called for its side effect - writing TXT documentation file
+# Tstamp: A character string specifying timestamp of the computation
+# name, mail: character string with contact information
+# strg_applied: A logical value documenting whether storage correction was applied
+# forGF: A tibble with names of quality control flags used for final QC
+# path: A character string specifying folder name for saving the TXT file
+# siteyear: A character string specifying siteyear
+# - used in QC workflow
+document_QC <- function(Tstamp, name, mail, strg_applied, forGF,
+                        path, siteyear) {
+  writeLines(c(paste0(Tstamp, ":"),
+               paste0("Quality controlled by ", name, " (", mail, ")"),
+               "",
+               paste0("Storage corrected fluxes: ", strg_applied),
+               "",
+               "Applied quality control scheme:", 
+               capture.output(as.data.frame(forGF)),
+               "",
+               "Information about the R session:",
+               capture.output(sessionInfo())), 
+             file.path(
+               path,
+               paste0(siteyear, '_QC_info_', Tstamp, '.txt')), 
+             sep = "\n")
 }
 
 # Create utility function for saving plots to png

@@ -128,6 +128,7 @@ precheck <- choose_avail(precheck_vars, names(data))
 save_precheck_plots(data, precheck, siteyear, Tstamp, paths$Precheck)
 
 # Show dependence of w_unrot on wind direction with additional statistics
+# - png file is saved to respective file path
 # - to reduce sensitivity of computed stats to outliers, median and mad is used
 # - qrange is quantile range for ylim to reduce impact of outliers
 #   - qrange has only visual effect, it does not affect computed statistics 
@@ -139,6 +140,7 @@ ggsave(file.path(
   type = "cairo-png", width = 297, height = 210, units = "mm")
 
 # Show dependence of w_rot on wind direction with additional statistics
+# - png file is saved to respective file path
 ggsave(file.path(
   paths$WD_dependency,
   paste0(siteyear, "_orig_w_rot_WD_stats_", Tstamp, ".png")),
@@ -169,7 +171,8 @@ applied_w_rot_correction <- w_rot_correction
 # Skip if w_rot_correction = "none"
 if (!w_rot_correction == "none" && rotation_type == "planar fit") {
   data$w_rot <- data$w_rot - w_rot_correction 
-  # Confirm the succesful w_rot correction (skip if w_rot_correction = "none")
+  # Confirm the successful w_rot correction (skip if w_rot_correction = "none")
+  # - png file is saved to respective file path
   ggsave(file.path(
     paths$WD_dependency,
     paste0(siteyear, "_corrected_w_rot_WD_stats_", Tstamp, ".png")),

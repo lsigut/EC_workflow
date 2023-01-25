@@ -91,6 +91,8 @@ document_merged <- function(data_name_out, EP_path, Meteo_path, out_path,
   if (docu_name_out %in% list.files(out_path)) {
     message("Combined documentation already exists")
   } else {
+    fp <- file.path(out_path, docu_name_out)
+    message("saving file to ", fp)
     writeLines(c(paste0(Tstamp, ":"),
                  paste0("Files merged by ", name, " (", mail, ")"),
                  "",
@@ -104,7 +106,7 @@ document_merged <- function(data_name_out, EP_path, Meteo_path, out_path,
                  combine_docu(docu_name_in),
                  "Information about the R session:",
                  capture.output(sessionInfo())), 
-               file.path(out_path, docu_name_out), sep = "\n")
+               fp, sep = "\n")
   }
 }
 
@@ -120,10 +122,10 @@ document_merged <- function(data_name_out, EP_path, Meteo_path, out_path,
 save_precheck_plots <- function(data, precheck, siteyear, Tstamp, path, 
                                 width = 11.00, height = 8.27, 
                                 qrange = c(0.005, 0.995)) {
-  pdf(file.path(
-    path, 
-    paste0(siteyear, "_auxiliary_precheck_", Tstamp, ".pdf")), 
-    width = width, height = height)
+  fp <- file.path(path, 
+                  paste0(siteyear, "_auxiliary_precheck_", Tstamp, ".pdf"))
+  message("saving file to ", fp)
+  pdf(fp, width = width, height = height)
   on.exit(dev.off(), add = TRUE)
   invisible(lapply(precheck, plot_precheck, x = data, qrange = qrange))
 }
@@ -142,10 +144,11 @@ save_flux_plots <- function(data, qc_suffix = "prelim", siteyear, sname,
                             Tstamp, path, fluxes, 
                             width = 11.00, height = 8.27) {
   for (i in fluxes) {
-    pdf(file.path(
+    fp <- file.path(
       path,
-      paste0(siteyear, "_", sprintf(sname, i), "_", Tstamp, ".pdf")), 
-      width = width, height = height)
+      paste0(siteyear, "_", sprintf(sname, i), "_", Tstamp, ".pdf"))
+    message("saving file to ", fp)
+    pdf(fp, width = width, height = height)
     qc <- paste("qc", i, qc_suffix, sep = "_")
     plot_eddy(data, i, qc, qc)
     dev.off()
@@ -175,14 +178,18 @@ plot_QC_summary <- function(data, prelim, cumul) {
 # - used in QC workflow
 save_QC_summary_plots <- function(data, prelim, path, siteyear, Tstamp,
                                   width = 297, height = 210) {
-  ggsave(file.path(
+  fp_ind <- file.path(
     path,
-    paste0(siteyear, "_QC_summary_", Tstamp, ".png")),
+    paste0(siteyear, "_QC_summary_", Tstamp, ".png"))
+  message("saving file to ", fp_ind)
+  ggsave(fp_ind,
     plot_QC_summary(data, prelim, cumul = FALSE),
     type = "cairo-png", width = width, height = height, units = "mm")
-  ggsave(file.path(
+  fp_cum <- file.path(
     path,
-    paste0(siteyear, "_QC_summary_cumulative_", Tstamp, ".png")),
+    paste0(siteyear, "_QC_summary_cumulative_", Tstamp, ".png"))
+  message("saving file to ", fp_cum)
+  ggsave(fp_cum,
     plot_QC_summary(data, prelim, cumul = TRUE),
     type = "cairo-png", width = width, height = height, units = "mm")
 }
@@ -224,6 +231,10 @@ set_man_names <- function(fluxes, man) {
 # - used in QC workflow
 document_QC <- function(Tstamp, name, mail, strg_applied, forGF,
                         path, siteyear) {
+  fp <- file.path(
+    path,
+    paste0(siteyear, '_QC_info_', Tstamp, '.txt'))
+  message("saving file to ", fp)
   writeLines(c(paste0(Tstamp, ":"),
                paste0("Quality controlled by ", name, " (", mail, ")"),
                "",
@@ -236,9 +247,7 @@ document_QC <- function(Tstamp, name, mail, strg_applied, forGF,
                "",
                "Information about the R session:",
                capture.output(sessionInfo())), 
-             file.path(
-               path,
-               paste0(siteyear, '_QC_info_', Tstamp, '.txt')), 
+             fp, 
              sep = "\n")
 }
 

@@ -5,7 +5,7 @@
 # and preparation of input data for summaries. Original and final data are
 # plotted and further statistics are computed. Computation of bootstrap u*
 # thresholds and estimation of standard deviation based on look-up tables
-# provides further information about measurement uncertainty. This worflow part
+# provides further information about measurement uncertainty. This workflow part
 # relies heavily on REddyProc package. For documentation of output variable
 # names please visit MPI Online Tool website:
 # https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput
@@ -31,7 +31,8 @@ source("utilities.R")
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-packages <- c("REddyProc", "bigleaf")
+# - see https://github.com/bgctw/REddyProc if mlegp not available
+packages <- c("REddyProc", "bigleaf", "mlegp")
 invisible(lapply(packages, attach_pkg))
 
 # Workflow is currently aligned only with specific package version
@@ -84,7 +85,6 @@ meteo <- c('Rg', 'Tair', 'Tsoil', 'VPD')
 FP_temp <- 'Tsoil'
 
 # Show precheck plots in the console? 
-# - default: plot_to_console <- TRUE
 plot_to_console <- FALSE
 
 # Save figures as "png" (default) or "pdf"
@@ -131,7 +131,7 @@ EddyData.F <- read_eddy(input, sep = "\t")
 # head(EddyData.F)
 # str(EddyData.F)
 
-# If not provided, calculate VPD from Tair and rH
+# If not provided or if including gaps, calculate VPD from Tair and rH
 if (!"VPD" %in% names(EddyData.F) || anyNA(EddyData.F$VPD)) {
   EddyData.F$VPD <- fCalcVPDfromRHandTair(EddyData.F$rH, EddyData.F$Tair)
 }
@@ -192,6 +192,9 @@ UstarThres.df <- if (seasonal_ustar) {
 } else {
   usGetAnnualSeasonUStarMap(uStarRes)
 }
+
+# Save results to a file for fast reload if needed
+# - ?readRDS
 saveRDS(UstarThres.df, file.path(paths$Ustar_filtering, "UstarThres.df.rds"))
 
 ### Run gap-filling ============================================================
@@ -209,8 +212,8 @@ EddyProc.C$sSetUstarScenarios(usGetSeasonalSeasonUStarMap(uStarThAgg))
 EddyProc.C$sGetUstarScenarios() # check the applied thresholds
 EddyProc.C$sMDSGapFillUStarScens('NEE', FillAll = TRUE)
 
-# Fill gaps in variables with MDS gap filling algorithm 
-# without prior ustar filtering for comparison
+# Fill gaps in variables with MDS gap filling algorithm without prior ustar 
+# filtering for comparison
 EddyProc.C$sMDSGapFill('NEE', FillAll = TRUE, suffix = 'UNone')
 
 # Meteo must be gap-filled even when without gaps to run the partitioning 
@@ -259,7 +262,7 @@ for (i in suffixes) {
   FP_GL10_out_list[[which(suffixes == i)]] <- out
 }
 
-# Column-bind the list with result to single data frame and save GL10 results
+# Column-bind the list with results to single data frame and save GL10 results
 FP_GL10_out <- do.call(cbind, FP_GL10_out_list)
 saveRDS(FP_GL10_out, file.path(paths$Gap_filling, "FP_GL10_out.rds"))
 
@@ -314,8 +317,10 @@ for (Var in DC_vars) {
 
 ### Convert LE to ET and combine ustar filter (UF) with qc_forGF_NEE ===========
 
-# load essential QC file
+# Load essential QC file
+# - remove columns with "_orig" suffices to prevent duplication
 ess <- read_eddy(ess_in)
+ess[grep("_orig$", names(ess), value = TRUE)] <- NULL
 
 # Export input data, gap-filling and flux partitioning results
 all_out <- cbind(ess["timestamp"], EddyData.F, FP_MR05$sExportResults(), 
@@ -352,7 +357,7 @@ write_eddy(all_out,
            file.path(
              paths$Gap_filling,
              paste0(siteyear, "_GF_full_output_", Tstamp, ".csv")))
-           
+
 # Select the most important variables obtained during gap-filling
 # - add also ET columns created by conversion from LE
 gf_ess <- grep(paste(c("_orig$", "_f$", "_fqc$", "_fall$", "_fsd$", "_Thres$"), 
@@ -376,43 +381,9 @@ write_eddy(ess_out,
              paths$Gap_filling,
              paste0(siteyear, "_GF_essentials_", Tstamp, ".csv")))
 
-# Save documentation and other info
-perc_records <- nrow(all_out) / 100
-flux_avail_names <- c("H_orig", "LE_orig", "NEE_uStar_orig")
-avail_rec <- lapply(flux_avail_names, function(x) {
-  temp <- table(!is.na(all_out[x]))
-  round(unname(temp["TRUE"] / perc_records), 1)
-})
-names(avail_rec) <- flux_avail_names
-
-writeLines(c(paste0(Tstamp, ":"),
-             paste0("Processed by ", name, " (", mail, ")"),
-             "",
-             paste0("Siteyear:"),
-             siteyear,
-             "",
-             "Used site metadata:",
-             paste0("latitude = ", lat, ", longitude = ", long, ", timezone = ",
-                    tzh),
-             "",
-             "Temperature used for flux partitioning:",
-             FP_temp,
-             "",
-             "Ustar filtering settings:",
-             paste0("seasonal_ustar = ", seasonal_ustar),
-             paste0("use_changepoint_detection = ", use_CPD),
-             "",
-             "Availability of original records for respective flux:",
-             paste0("H = ", avail_rec$H_orig, "%"),
-             paste0("LE = ", avail_rec$LE_orig, "%"),
-             paste0("NEE = ", avail_rec$NEE_uStar_orig, "%"),
-             "",
-             "Information about the R session:",
-             capture.output(sessionInfo())), 
-           file.path(
-             paths$Gap_filling,
-             paste0(siteyear, '_documentation_', Tstamp, '.txt')), 
-           sep = "\n")
+# Save documentation about executed gap-filling and flux partitioning 
+document_GF(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
+            FP_temp, seasonal_ustar, use_CPD, paths$Gap_filling)
 
 ### Plot the results using openeddy ============================================
 
@@ -434,7 +405,7 @@ dev.off()
 pdf(file.path(
   paths$Gap_filling,
   paste0(siteyear, "_H_fall_", Tstamp, ".pdf")),
-    width = 11.00, height = 8.27)
+  width = 11.00, height = 8.27)
 plot_eddy(ess_out, "H", "qc_H_forGF", "qc_H_forGF", flux_gf = "H_fall")
 dev.off()
 
@@ -466,7 +437,7 @@ names(MR05)[MR05_FP_names_filter] <- c("Reco", "GPP")
 pdf(file.path(
   paths$Gap_filling,
   paste0(siteyear, "_NEE_uStar_f_MR05_", Tstamp, ".pdf")),
-    width = 11.00, height = 8.27)
+  width = 11.00, height = 8.27)
 plot_eddy(MR05, "NEE", "qc_NEE_forGF_UF", "qc_NEE_forGF_UF",
           flux_gf = "NEE_uStar_f", NEE_sep = TRUE)
 dev.off()

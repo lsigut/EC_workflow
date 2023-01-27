@@ -251,6 +251,62 @@ document_QC <- function(Tstamp, name, mail, strg_applied, forGF,
              sep = "\n")
 }
 
+# Document gap-filling and flux partitioning
+# - this function is called for its side effect - writing TXT documentation file
+# all_out: A data frame with column names containing REddyProc exported results
+# Tstamp: A character string specifying timestamp of the computation
+# name, mail: character string with contact information
+# siteyear: A character string specifying siteyear
+# lat, long, tzh: Numeric values specifying latitude, longtitude and timezone
+# FP_temp: A character string. Temperature used for flux partitioning
+# seasonal_ustar: A logical value. Was ustar threshold resolved seasonally? 
+# use_CPD: A logical value. Was change-point detection method used?
+# path: A character string specifying folder name for saving the TXT file
+# - used in GF workflow
+document_GF <- function(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
+                        FP_temp, seasonal_ustar, use_CPD, path) {
+  # compute flux availability percentage
+  perc_records <- nrow(all_out) / 100
+  flux_avail_names <- c("H_orig", "LE_orig", "NEE_uStar_orig")
+  avail_rec <- lapply(flux_avail_names, function(x) {
+    temp <- table(!is.na(all_out[x]))
+    round(unname(temp["TRUE"] / perc_records), 1)
+  })
+  names(avail_rec) <- flux_avail_names
+  
+  # document GF output
+  fp <- file.path(
+    path,
+    paste0(siteyear, '_documentation_', Tstamp, '.txt'))
+  message("saving file to ", fp)
+  writeLines(c(paste0(Tstamp, ":"),
+               paste0("Processed by ", name, " (", mail, ")"),
+               "",
+               paste0("Siteyear:"),
+               siteyear,
+               "",
+               "Used site metadata:",
+               paste0("latitude = ", lat, ", longitude = ", long, ", timezone = ",
+                      tzh),
+               "",
+               "Temperature used for flux partitioning:",
+               FP_temp,
+               "",
+               "Ustar filtering settings:",
+               paste0("seasonal_ustar = ", seasonal_ustar),
+               paste0("use_changepoint_detection = ", use_CPD),
+               "",
+               "Availability of original records for respective flux:",
+               paste0("H = ", avail_rec$H_orig, "%"),
+               paste0("LE = ", avail_rec$LE_orig, "%"),
+               paste0("NEE = ", avail_rec$NEE_uStar_orig, "%"),
+               "",
+               "Information about the R session:",
+               capture.output(sessionInfo())), 
+             fp, 
+             sep = "\n")
+}
+
 # Create utility function for saving plots to png
 # - x: A character string specifying naming of the given plot
 # - used in Summary workflow

@@ -8,7 +8,7 @@
 # provides further information about measurement uncertainty. This workflow part
 # relies heavily on REddyProc package. For documentation of output variable
 # names please visit MPI Online Tool website:
-# https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebOutput
+# https://bgc.iwww.mpg.de/5622399/REddyProc
 #
 # Code developed by Ladislav Sigut (sigut.l@czechglobe.cz).
 
@@ -46,10 +46,12 @@ if (packageVersion("REddyProc") < "1.3.0")
           "version '1.3.0' or higher")
 
 # REddyProc documentation:
-# https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebRPackage
 # https://github.com/bgctw/REddyProc
+# https://bgc.iwww.mpg.de/5624551/REddyProc-Rpackage
+
 # Data formatting description:
-# https://www.bgc-jena.mpg.de/bgi/index.php/Services/REddyProcWebFormats
+# https://bgc.iwww.mpg.de/5624884/Data-Formats
+
 # Article:
 # https://www.biogeosciences.net/15/5015/2018/
 

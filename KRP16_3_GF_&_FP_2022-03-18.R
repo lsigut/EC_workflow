@@ -10,6 +10,8 @@
 # names please visit MPI Online Tool website:
 # https://bgc.iwww.mpg.de/5622399/REddyProc
 #
+# You can find example data set at https://doi.org/10.5281/zenodo.6631498
+#
 # Code developed by Ladislav Sigut (sigut.l@czechglobe.cz).
 
 ### Set working directory to the folder where this document is saved ===========
@@ -111,6 +113,11 @@ ess_in <- grep(paste0(siteyear, ".*essentials.*csv"),
 # - automated, will be included in file names
 Tstamp <- format(Sys.time(), "%Y-%m-%d") 
 
+# Set fixed ustar threshold if needed (skip ustar threshold estimation)
+# - default is: fixed_UT <- NA; i.e. UT estimation is recommended
+# - if provided, seasonal_ustar and use_CPD settings will be ignored
+fixed_UT <- NA
+
 # Choose ustar threshold estimation method resolution
 # - either seasonal ustar threshold (seasonal_ustar <- TRUE; default)
 # - or annual thresholds (seasonal_ustar <- FALSE)
@@ -167,37 +174,40 @@ if (plot_to_console) {
 ### Apply uStar-filtering ======================================================
 
 # Seasons contained within one year (e.g. Dec 2014 is pooled with Jan, Feb 2014)
-set.seed(0815)
-season_factor <- usCreateSeasonFactorMonthWithinYear(
-  EddyDataWithPosix.F$DateTime + shift.by)
-table(season_factor)
-(uStarRes <- EddyProc.C$sEstUstarThresholdDistribution(
-  nSample = 200L, seasonFactor = season_factor,
-  ctrlUstarEst = usControlUstarEst(isUsingCPTSeveralT = use_CPD)))
-
-# Round and save the results
-uStarRes <- round_df(uStarRes)
-write.csv(uStarRes, row.names = FALSE, 
-          file.path(
-            paths$Ustar_filtering,
-            paste0("Ustar_thresholds_", Tstamp, ".csv")))
-
-# Plot saturation of NEE with UStar for available seasons
-for (i in seq_along(levels(uStarRes$season))) {
-  EddyProc.C$sPlotNEEVersusUStarForSeason(
-    levels(uStarRes$season)[i], dir = paths$Ustar_filtering)
+# - skip estimation if fixed ustar threshold was provided
+if (is.na(fixed_UT)) {
+  set.seed(0815)
+  season_factor <- usCreateSeasonFactorMonthWithinYear(
+    EddyDataWithPosix.F$DateTime + shift.by)
+  table(season_factor)
+  (uStarRes <- EddyProc.C$sEstUstarThresholdDistribution(
+    nSample = 200L, seasonFactor = season_factor,
+    ctrlUstarEst = usControlUstarEst(isUsingCPTSeveralT = use_CPD)))
+  
+  # Round and save the results
+  uStarRes <- round_df(uStarRes)
+  write.csv(uStarRes, row.names = FALSE, 
+            file.path(
+              paths$Ustar_filtering,
+              paste0("Ustar_thresholds_", Tstamp, ".csv")))
+  
+  # Plot saturation of NEE with UStar for available seasons
+  for (i in seq_along(levels(uStarRes$season))) {
+    EddyProc.C$sPlotNEEVersusUStarForSeason(
+      levels(uStarRes$season)[i], dir = paths$Ustar_filtering)
+  }
+  
+  # Use annual or seasonal estimates
+  UstarThres.df <- if (seasonal_ustar) {
+    usGetSeasonalSeasonUStarMap(uStarRes)
+  } else {
+    usGetAnnualSeasonUStarMap(uStarRes)
+  }
+  
+  # Save results to a file for fast reload if needed
+  # - ?readRDS
+  saveRDS(UstarThres.df, file.path(paths$Ustar_filtering, "UstarThres.df.rds"))
 }
-
-# Use annual or seasonal estimates
-UstarThres.df <- if (seasonal_ustar) {
-  usGetSeasonalSeasonUStarMap(uStarRes)
-} else {
-  usGetAnnualSeasonUStarMap(uStarRes)
-}
-
-# Save results to a file for fast reload if needed
-# - ?readRDS
-saveRDS(UstarThres.df, file.path(paths$Ustar_filtering, "UstarThres.df.rds"))
 
 ### Run gap-filling ============================================================
 
@@ -205,14 +215,21 @@ saveRDS(UstarThres.df, file.path(paths$Ustar_filtering, "UstarThres.df.rds"))
 EddyProc.C$sMDSGapFill(c('H'), FillAll = TRUE)	
 EddyProc.C$sMDSGapFill(c('LE'), FillAll = TRUE)
 
-# NEE gapfilling: the maximum of all available seasons is taken to mark periods 
-# with low uStar if seasonal_ustar == FALSE (higher exclusion fraction)
-# NB: the ustar filtering is implemented here only for nighttime and if ustar
-# value is missing the halfhour is NOT filtered (last checked in 2017)
-(uStarThAgg <- EddyProc.C$sGetEstimatedUstarThresholdDistribution())
-EddyProc.C$sSetUstarScenarios(usGetSeasonalSeasonUStarMap(uStarThAgg))
-EddyProc.C$sGetUstarScenarios() # check the applied thresholds
-EddyProc.C$sMDSGapFillUStarScens('NEE', FillAll = TRUE)
+# NEE gap filling
+# - the maximum of all available seasons is taken to mark periods with low uStar
+#   if seasonal_ustar == FALSE (higher exclusion fraction)
+# - Note: the ustar filtering is implemented here only for nighttime and if 
+#   uStar value is missing, the half hour is not filtered; thus respective NEE 
+#   values are removed in quality control step (see ?set_OT_input)
+if (is.na(fixed_UT)) {
+  (uStarThAgg <- EddyProc.C$sGetEstimatedUstarThresholdDistribution())
+  EddyProc.C$sSetUstarScenarios(usGetSeasonalSeasonUStarMap(uStarThAgg))
+  EddyProc.C$sGetUstarScenarios() # check the applied thresholds
+  EddyProc.C$sMDSGapFillUStarScens('NEE', FillAll = TRUE)
+} else {
+  # the alternative if using fixed_UT
+  EddyProc.C$sMDSGapFillAfterUstar('NEE', uStarTh = fixed_UT, FillAll = TRUE)
+}
 
 # Fill gaps in variables with MDS gap filling algorithm without prior ustar 
 # filtering for comparison
@@ -227,7 +244,11 @@ saveRDS(EddyProc.C, file.path(paths$Gap_filling, "EddyProc.C_GF.rds"))
 ### Run flux partitioning ======================================================
 
 # Perform flux partitioning for gap-filled product
-suffixes <- c('uStar', 'U05', 'U50', 'U95', 'UNone')
+suffixes <- if (is.na(fixed_UT)) {
+  c('uStar', 'U05', 'U50', 'U95', 'UNone')
+} else {
+  c('uStar', 'UNone')
+}
 
 # Reichstein et al. (2005) - further abbreviated as MR05
 # - in case not sufficient amount of data, try to reduce TempRange 
@@ -320,7 +341,7 @@ for (Var in DC_vars) {
 ### Convert LE to ET and combine ustar filter (UF) with qc_forGF_NEE ===========
 
 # Load essential QC file
-# - remove columns with "_orig" suffices to prevent duplication
+# - remove columns with "_orig" suffixes to prevent duplication
 ess <- read_eddy(ess_in)
 ess[grep("_orig$", names(ess), value = TRUE)] <- NULL
 
@@ -373,7 +394,7 @@ ess_vars <- c("qc_NEE_forGF_UF", gf_ess, "Reco_uStar", "GPP_uStar_f", fp_ess)
 
 # Create object with essential variables including gap-filling (GF) 
 # and flux partitioning results
-ess_vars <- choose_avail(names(all_out), ess_vars)
+ess_vars <- choose_avail(ess_vars, names(all_out))
 ess_out <- cbind(ess, all_out[ess_vars])
 
 # Save the essential outputs
@@ -385,7 +406,7 @@ write_eddy(ess_out,
 
 # Save documentation about executed gap-filling and flux partitioning 
 document_GF(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
-            FP_temp, seasonal_ustar, use_CPD, paths$Gap_filling)
+            FP_temp, fixed_UT, seasonal_ustar, use_CPD, paths$Gap_filling)
 
 ### Plot the results using openeddy ============================================
 

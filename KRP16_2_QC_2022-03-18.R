@@ -8,6 +8,8 @@
 # vertical wind speed (w_rot) is optional and overwrites the original values of
 # respective variables.
 #
+# You can find example data set at https://doi.org/10.5281/zenodo.6631498
+#
 # For documentation of EddyPro variable names see:
 # https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html
 #

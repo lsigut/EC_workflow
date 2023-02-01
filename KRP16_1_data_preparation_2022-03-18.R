@@ -12,6 +12,8 @@
 # shortwave radiation) can have negative impact on the reliability and quality
 # of the final products.
 #
+# You can find example data set at https://doi.org/10.5281/zenodo.6631498
+#
 # For documentation of EddyPro variable names see:
 # https://www.licor.com/env/support/EddyPro/topics/output-files-full-output.html
 #

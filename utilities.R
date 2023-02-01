@@ -264,7 +264,7 @@ document_QC <- function(Tstamp, name, mail, strg_applied, forGF,
 # path: A character string specifying folder name for saving the TXT file
 # - used in GF workflow
 document_GF <- function(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
-                        FP_temp, seasonal_ustar, use_CPD, path) {
+                        FP_temp, fixed_UT, seasonal_ustar, use_CPD, path) {
   # compute flux availability percentage
   perc_records <- nrow(all_out) / 100
   flux_avail_names <- c("H_orig", "LE_orig", "NEE_uStar_orig")
@@ -286,16 +286,20 @@ document_GF <- function(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
                siteyear,
                "",
                "Used site metadata:",
-               paste0("latitude = ", lat, ", longitude = ", long, ", timezone = ",
+               paste0("latitude = ", lat, ", longitude = ", long, ", timezone = ", 
                       tzh),
                "",
                "Temperature used for flux partitioning:",
                FP_temp,
                "",
                "Ustar filtering settings:",
-               paste0("seasonal_ustar = ", seasonal_ustar),
-               paste0("use_changepoint_detection = ", use_CPD),
-               "",
+               if (is.na(fixed_UT)) {
+                 c(paste0("seasonal_ustar = ", seasonal_ustar),
+                   paste0("use_changepoint_detection = ", use_CPD))
+               } else {
+                 paste("fixed_ustar_threshold:", fixed_UT, "m s-1")
+               },
+                "",
                "Availability of original records for respective flux:",
                paste0("H = ", avail_rec$H_orig, "%"),
                paste0("LE = ", avail_rec$LE_orig, "%"),
@@ -308,22 +312,19 @@ document_GF <- function(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
 }
 
 # Create utility function for saving plots to png
-# - x: A character string specifying naming of the given plot
+# x: A character string specifying naming of the given plot
+# path: A character string specifying folder name for saving the png
+# siteyear: A character string specifying siteyear
+# Tstamp: A character string specifying timestamp of the computation
+# width, height: The width and height of the graphics region in inches
+# res: An integer specifying png resolution (see ?png)
 # - used in Summary workflow
-png_util <- function(x, width = 3508, height = 2480, res = 400) {
+save_png <- function(x, path, siteyear, Tstamp, width = 3508, height = 2480, 
+                     res = 400) {
   png(file.path(
-    paths$png,
+    path,
     paste0(siteyear, "_", x, "_", Tstamp, ".png")),
     width = width, height = height, res = res)
-}
-
-# Construct saving path for different aggregation intervals
-# - x: a character string with interval description (e.g. "daily")
-# - used in Summary workflow
-filenames <- function(x) {
-  file.path(
-    paths$Summary,
-    paste0(siteyear, "_", x, "_summary_", Tstamp, ".csv"))
 }
 
 # EOF

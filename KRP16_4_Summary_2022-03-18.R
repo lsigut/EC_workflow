@@ -4,6 +4,8 @@
 # This code primarily aims to produce the summary of processed data at different
 # timescales (daily, weekly, monthly, yearly) and to plot them.
 #
+# You can find example data set at https://doi.org/10.5281/zenodo.6631498
+#
 # Code developed by Ladislav Sigut (sigut.l@czechglobe.cz).
 
 ### Set working directory to the folder where this document is saved ===========
@@ -69,16 +71,18 @@ head(data$timestamp)
 
 # Specify variables needed for different procedures later 
 # - used for averaging, summation, uncertainty estimation and plotting
+# - GWL (ground water level), SWC (soil water content) and G (soil heat flux)
+#   are not available in KRP16 example data set
 mean <- c("Tair", "Tsoil", "RH", "VPD", "GR", "Rn", "PAR", "GWL", "SWC", "G", 
           "H_f", "H_fqc", "LE_f", "LE_fqc", "ET_f", "ET_fqc", 
           "NEE_uStar_f", "NEE_uStar_fqc", "GPP_uStar_f", "GPP_DT_uStar", 
           "Reco_uStar", "Reco_DT_uStar")
-mean <- choose_avail(names(data), mean)
+mean <- choose_avail(mean, names(data))
 sum <- c("P", "GR", "Rn", "PAR", "G", "H_f", "LE_f", "ET_f", 
          grep("(NEE|GPP).+f$", names(data), value = TRUE),
          grep("GPP_DT.+[^D]$", names(data), value = TRUE),
          grep("Reco.+[^D]$", names(data), value = TRUE))
-sum <- choose_avail(names(data), sum)
+sum <- choose_avail(sum, names(data))
 err_agg <- grep("(^H|^LE|^ET|^NEE|^Reco|^GPP).*(sd|SD)$", names(data), 
                 value = TRUE)
 
@@ -143,47 +147,47 @@ print(ggplot_stats(data, "wind_dir", "zeta", circular = TRUE))
 dev.off()
 
 # Print separately to png
-# - png_util() is defined in utilities.R as a helper function for saving plots
-png_util("wind_rose_all")
+# - save_png() is defined in utilities.R as a helper function for saving plots
+save_png("wind_rose_all", paths$png, siteyear, Tstamp)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd")]), ], 
          angle = 22.5, paddle = FALSE, breaks = 5)
 dev.off()
 
-png_util("wind_rose_day-night")
+save_png("wind_rose_day-night", paths$png, siteyear, Tstamp)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "time")]), ], 
          type = "time", angle = 22.5, paddle = FALSE, breaks = 5)
 dev.off()
 
-png_util("wind_rose_months")
+save_png("wind_rose_months", paths$png, siteyear, Tstamp)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "months")]), ], 
          type = "months", angle = 45, paddle = FALSE, breaks = 5, 
          grid.line = 10)
 dev.off()
 
-png_util("wind_rose_stability")
+save_png("wind_rose_stability", paths$png, siteyear, Tstamp)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd", "stability")]), ], 
          type = "stability", angle = 22.5, paddle = FALSE, 
          breaks = 5, grid.line = 10, 
          main = "Zeta parameter based stability classes")
 dev.off()
 
-png_util("wind_dir_x_peak")
+save_png("wind_dir_x_peak", paths$png, siteyear, Tstamp)
 print(ggplot_stats(data, "wind_dir", "x_peak", circular = TRUE))
 dev.off()
 
-png_util("wind_dir_x_70perc")
+save_png("wind_dir_x_70perc", paths$png, siteyear, Tstamp)
 print(ggplot_stats(data, "wind_dir", "x_70perc", circular = TRUE))
 dev.off()
 
-png_util("wind_dir_wind_speed")
+save_png("wind_dir_wind_speed", paths$png, siteyear, Tstamp)
 print(ggplot_stats(data, "wind_dir", "wind_speed", circular = TRUE))
 dev.off()
 
-png_util("wind_dir_ustar")
+save_png("wind_dir_ustar", paths$png, siteyear, Tstamp)
 print(ggplot_stats(data, "wind_dir", "ustar", circular = TRUE))
 dev.off()
 
-png_util("wind_dir_zeta")
+save_png("wind_dir_zeta", paths$png, siteyear, Tstamp)
 print(ggplot_stats(data, "wind_dir", "zeta", circular = TRUE))
 dev.off()
 
@@ -273,13 +277,18 @@ summaries <- vector("list", length(means))
 resol_names <- c("daily", "weekly", "monthly", "yearly")
 names(summaries) <- resol_names
 
-# Loop uses filenames() function saved in utilities.R
+# Save the summaries to CSV files
 for (i in seq_along(means)) {
   summaries[[i]] <- cbind(means[[i]], fsd[[i]]$mean[-c(1:2)], 
                           DT_SD[[i]]$mean[-c(1:2)], sums[[i]][-c(1:2)], 
                           fsd[[i]]$sum[-c(1:2)], DT_SD[[i]]$sum[-c(1:2)],
                           pars[[i]][-c(1:2)])
-  write_eddy(round_df(summaries[[i]]), filenames(resol_names[i]))
+  write_eddy(
+    round_df(summaries[[i]]), 
+    file.path(
+      paths$Summary,
+      paste0(siteyear, "_", resol_names[i], "_summary_", Tstamp, ".csv"))
+  )
 }
 
 ### Plot summaries for different intervals ===================================== 
@@ -353,11 +362,11 @@ print(spti_covp)
 dev.off()
 
 # Save specified ggplots to png
-png_util("spatial_sampling_coverage")
+save_png("spatial_sampling_coverage", paths$png, siteyear, Tstamp)
 print(spti_covp[[1]]$spatial_sampling_coverage)
 dev.off()
 
-png_util("temporal_sampling_coverage")
+save_png("temporal_sampling_coverage", paths$png, siteyear, Tstamp)
 print(spti_covp[[1]]$temporal_sampling_coverage)
 dev.off()
 
@@ -403,13 +412,13 @@ for (var in vars) {
                      circular = TRUE, qrange = c(0.005, 0.99)))
   
   # Open png device, plot and close the device
-  png_util(rel_err)
+  save_png(rel_err, paths$png, siteyear, Tstamp)
   print(ggplot_stats(fqc_subset, "wind_dir", rel_err, 
                      circular = TRUE, qrange = c(0.005, 0.99)))
   dev.off()
   
   # Open png device, plot and close the device
-  png_util(rel_fsd)
+  save_png(rel_fsd, paths$png, siteyear, Tstamp)
   print(ggplot_stats(fqc_subset, "wind_dir", rel_fsd, 
                      circular = TRUE, qrange = c(0.005, 0.99)))
   dev.off()

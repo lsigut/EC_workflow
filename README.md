@@ -57,7 +57,7 @@ user in a form of numeric vector (see *ROI boundary* section below and
 To run EC workflow for the example site-year KRP16:
 
 Download `KRP16 - before processing.zip` from
-[Zenodo](https://doi.org/10.5281/zenodo.6631498) and unzip. Run workflow
+[Zenodo](https://doi.org/10.5281/zenodo.7828751) and unzip. Run workflow
 files in specified order according to instructions there:
 
 1.  `data_preparation` workflow: formatting and merging inputs.

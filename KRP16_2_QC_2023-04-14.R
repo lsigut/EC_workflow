@@ -154,17 +154,14 @@ ggsave(file.path(
 #   evaluation of w wind component residual will be applied in the QC scheme
 # - ideally, w_rot median should be close to zero as any substantial deviations
 #   could lead to excessive flagging by wresid filter
-# - this can be corrected by forcing the w_rot median to zero or by correcting
-#   it by B0 planar fit coefficient derived from the data
+# - this can be corrected by forcing the overall w_rot median to zero (double
+#   rotation forces w_rot to zero for each half-hour)
 
-# If applied, document here B0 used for correction from the folder:
-# none
-# file: none
-
-# Edit w_rot_correction value that will be substracted from w_rot
-# - if w_rot does not require correction, set "none"
+# Obtain w_rot_correction value that will be subtracted from w_rot
+# - estimation of overall w_rot median is automated
 # - if rotation_type == "double", w_rot_correction is not considered
-w_rot_correction <- "none"
+w_rot_correction <- 
+  if (rotation_type == "double") "none" else median(data$w_rot, na.rm = TRUE)
 
 # Store original value of w_rot_correction for documentation purposes
 # - once correction is applied, w_rot_correction is set to "none"
@@ -173,7 +170,7 @@ applied_w_rot_correction <- w_rot_correction
 # Skip if w_rot_correction = "none"
 if (!w_rot_correction == "none" && rotation_type == "planar fit") {
   data$w_rot <- data$w_rot - w_rot_correction 
-  # Confirm the successful w_rot correction (skip if w_rot_correction = "none")
+  # plot the corrected w_rot 
   # - png file is saved to respective file path
   ggsave(file.path(
     paths$WD_dependency,

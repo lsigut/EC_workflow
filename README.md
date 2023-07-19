@@ -19,6 +19,13 @@ post-processing to specifics of their site and will hopefully facilitate
 discussion and exchange of best practices concerning various types of
 ecosystems and EC setups.
 
+Comments in the workflow files explain how individual steps lead to the
+desired output. If you look for the settings and details about the
+`openeddy` functions, see `openeddy` documentation. Notice that there is
+also a set of interactive [openeddy
+tutorials](https://github.com/lsigut/openeddy_tutorials) that provide
+more context.
+
 ## Requirements
 
 The EC workflow is currently aligned with `EddyPro` software
@@ -140,7 +147,7 @@ handling more effective. The folder structure can be created using
 The complete processing chain in the context of above folder structure
 can be summarized as:
 
-![](Processing%20chain.jpg)
+![](Processing_chain.jpg)
 
 ## ROI boundary
 

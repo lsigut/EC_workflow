@@ -40,11 +40,10 @@ attach_pkg("openeddy", github = "lsigut/openeddy")
 # Attach packages from CRAN
 attach_pkg("tidyverse") # required for tribble()
 
-# Workflow is currently aligned only with specific package version
-# - package version should be neither higher or lower
-if (packageVersion("openeddy") < "0.0.0.9006")
+# Check if openeddy version conforms to requirements
+if (packageVersion("openeddy") == package_version("0.0.0.9006"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006' and above")
+          "'0.0.0.9006'")
 
 ### Provide metadata and set file paths and arguments ==========================
 
@@ -56,9 +55,12 @@ mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
 # - included in folder and file names
 siteyear <- "KRP16"
 
-# Edit the year
-# - used to define the time extent of used data, i.e. full year
-year <- 2016 
+# Edit the start and end of time period to post-process
+# - start <- 2016; end <- 2016: to assure complete year
+# - start <- NULL; end <- NULL: use timestamp extent from input files
+# - start <- "2016-02-01 10:00:00"; end <- "2017-02-01 10:00:00": arbitrary period
+start <- 2016
+end <- 2016
 
 # Required input files are meteo data and processed eddy covariance data
 
@@ -127,7 +129,7 @@ Met_mapping <- tribble(
 # variables for given site and different periods. Function merges them
 # vertically (along generated complete timestamp). Original column names are
 # retained for reliable variable remapping.
-M <- read_MeteoDBS(Meteo_path, start = year, end = year)
+M <- read_MeteoDBS(Meteo_path, start = start, end = end)
 
 # Rename Meteo data variables as required by openeddy and REddyProc packages
 # - other columns than those included in Met_mapping table are dropped
@@ -156,7 +158,7 @@ openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
 #   correct match across files is not automated)
 # - older versions of EddyPro had more duplicated column names in the output
 # - old EddyPro column name "max_speed" is corrected to "max_wind_speed" 
-EP <- read_EddyPro(EP_path, start = year, end = year, skip = 1, 
+EP <- read_EddyPro(EP_path, start = start, end = end, skip = 1, 
                    fileEncoding = "UTF-8")
 
 # Correct column names

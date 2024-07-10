@@ -37,11 +37,10 @@ attach_pkg("openeddy", github = "lsigut/openeddy")
 packages <- c("tidyverse", "ggplot2", "gridExtra", "reshape2")
 invisible(lapply(packages, attach_pkg))
 
-# Workflow is currently aligned only with specific package version
-# - package version should be neither higher or lower
-if (packageVersion("openeddy") < "0.0.0.9008")
+# Check if openeddy version conforms to requirements
+if (packageVersion("openeddy") == package_version("0.0.0.9008"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9008' and above")
+          "'0.0.0.9008'")
 
 ### Provide metadata and set file paths and arguments ==========================
 
@@ -52,10 +51,6 @@ mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
 # Edit the siteyear
 # - included in folder and file names
 siteyear <- "KRP16"
-
-# Edit the year
-# - used to define the time extent of used data, i.e. full year
-year <- 2016 
 
 # Do you want to perform manual data quality check? 
 # - default interactive_session <- TRUE is currently recommended
@@ -179,9 +174,6 @@ if (!w_rot_correction == "none" && rotation_type == "planar fit") {
     type = "cairo-png", width = 297, height = 210, units = "mm")
   w_rot_correction <- "none" # avoid rerunning of the correction by mistake
 }
-
-# Specify the vector of supported flux names used repeatedly within workflow 
-fluxes <- c("Tau", "H", "LE", "NEE")
 
 # Save flux time series precheck plots with distinguished QC along basic meteo 
 # - SSITC is the standard "Foken flag" (e.g. qc_H) from EddyPro renamed by 

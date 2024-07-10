@@ -37,15 +37,15 @@ attach_pkg("openeddy", github = "lsigut/openeddy")
 packages <- c("REddyProc", "bigleaf", "mlegp")
 invisible(lapply(packages, attach_pkg))
 
-# Workflow is currently aligned only with specific package version
-# - package version should be neither higher or lower
-if (packageVersion("openeddy") < "0.0.0.9006")
+# Check if openeddy version conforms to requirements
+if (packageVersion("openeddy") == package_version("0.0.0.9006"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006' and above")
+          "'0.0.0.9006'")
 
-if (packageVersion("REddyProc") < "1.3.0")
+# Check if REddyProc version conforms to requirements
+if (packageVersion("REddyProc") == package_version("1.3.0"))
   warning("this version of workflow works reliably with REddyProc ",
-          "version '1.3.0' or higher")
+          "version '1.3.0'")
 
 # REddyProc documentation:
 # https://github.com/bgctw/REddyProc
@@ -67,10 +67,6 @@ mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
 # - included in file names
 siteyear <- "KRP16"
 
-# Edit the year
-# - used when plotting to console (single year allowed)
-year <- 2016
-
 # Specify site metadata
 lat <- 49.5732575 # edit site latitude
 long <- 15.0787731 # edit site longtitude
@@ -87,9 +83,6 @@ meteo <- c('Rg', 'Tair', 'Tsoil', 'VPD')
 # - default: FP_temp <- 'Tsoil'
 # - note that MDS gap-filling is based on 'Tair'
 FP_temp <- 'Tsoil'
-
-# Show precheck plots in the console? 
-plot_to_console <- FALSE
 
 # Save figures as "png" (default) or "pdf"
 # - NEEvsUStar plots are fixed to "pdf"
@@ -158,18 +151,6 @@ EddyProc.C$sSetLocationInfo(lat, long, tzh)  # site location info
 # See the content
 str(EddyProc.C)
 EddyProc.C$sPrintFrames(NumRows.i = 6L)
-
-# Plot individual months/years to console (of current R graphics device)
-if (plot_to_console) {
-  for (Var in variables) {
-    EddyProc.C$sPlotFingerprintY(Var, Year = year)
-    title(main = Var, line = 0.2)
-  }
-  for (Var in variables) {
-    EddyProc.C$sPlotHHFluxesY(Var, Year = year)
-    title(ylab = Var, line = 2)
-  }
-}
 
 ### Apply uStar-filtering ======================================================
 

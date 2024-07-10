@@ -29,11 +29,10 @@ attach_pkg("openeddy", github = "lsigut/openeddy")
 # Attach packages from CRAN
 attach_pkg("openair")
 
-# Workflow is currently aligned only with specific package version
-# - package version should be neither higher or lower
-if (packageVersion("openeddy") < "0.0.0.9006")
+# Check if openeddy version conforms to requirements
+if (packageVersion("openeddy") == package_version("0.0.0.9006"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006' and above")
+          "'0.0.0.9006'")
 
 ### Provide metadata and set file paths and arguments ==========================
 

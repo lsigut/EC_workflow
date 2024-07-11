@@ -51,7 +51,7 @@ paths <- structure_eddy()
 # Input path for summary (automated)
 # - gap-filled and partitioned data
 path_in <- grep(paste0(siteyear, ".*GF_essentials.*csv"), 
-                list.files(paths$Gap_filling, full.names = TRUE),
+                list.files(paths$gap_filling, full.names = TRUE),
                 value = TRUE)
 
 # Specify the time shift (in seconds) to be applied to the date-time information
@@ -90,7 +90,7 @@ hh_vars <- grep("[^c]$", unique(c(mean, sum, err_agg)), value = TRUE)
 
 # Print half-hourly results to pdf and png
 pdf(file.path(
-  paths$Summary,
+  paths$summary,
   paste0(siteyear, "_half-hourly_plots_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 invisible(lapply(hh_vars, plot_hh, x = data))
@@ -124,7 +124,7 @@ wrose_all$stability <- cut(data$zeta, breakpoints, right = FALSE,
 
 # Print all to pdf
 pdf(file.path(
-  paths$Summary,
+  paths$summary,
   paste0(siteyear, "_wind_roses_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 windRose(wrose_all[complete.cases(wrose_all[c("ws", "wd")]), ], 
@@ -285,7 +285,7 @@ for (i in seq_along(means)) {
   write_eddy(
     round_df(summaries[[i]]), 
     file.path(
-      paths$Summary,
+      paths$summary,
       paste0(siteyear, "_", resol_names[i], "_summary_", Tstamp, ".csv"))
   )
 }
@@ -298,7 +298,7 @@ vars <- vars[!(vars %in% c("Intervals", "days"))]
 # Plot aggregated variables per given intervals to pdf 
 for (interval in c("daily", "weekly", "monthly")) {
   pdf(file.path(
-    paths$Summary,
+    paths$summary,
     paste0(siteyear, "_", interval, "_plots_", Tstamp, ".pdf")),
       width = 11.00, height = 8.27)
   for (var in vars) {
@@ -342,7 +342,7 @@ spti_cov <- spti_coverage(
 G20_all <- round_df(cbind(G20[-6], spti_unc[-(1:2)], spti_cov[-1]))
 write_eddy(G20_all, 
            file.path(
-             paths$Summary,
+             paths$summary,
              paste0(siteyear, "_Griebel_et_al_2020_budgets_", Tstamp, ".csv")))
 
 ### Plot spatio-temporal sampling coverage to pdf and png ======================
@@ -354,7 +354,7 @@ spti_covp <- spti_coverage(
 
 # Save all ggplots to pdf
 pdf(file.path(
-  paths$Summary,
+  paths$summary,
   paste0(siteyear, "_spatio-temporal_sampling_coverage_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 print(spti_covp)

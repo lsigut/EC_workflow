@@ -94,12 +94,12 @@ shift.by <- -900
 
 # The path where input for gap-filling is located (automated)
 input <- grep(paste0(siteyear, ".*txt"), 
-              list.files(paths$Input_for_GF, full.names = TRUE),
+              list.files(paths$input_for_gf, full.names = TRUE),
               value = TRUE)
 
 # The path where file with essential variables is located (automated)
 ess_in <- grep(paste0(siteyear, ".*essentials.*csv"), 
-               list.files(paths$Input_for_GF, full.names = TRUE),
+               list.files(paths$input_for_gf, full.names = TRUE),
                value = TRUE)
 
 # Timestamp of the computation
@@ -169,13 +169,13 @@ if (is.na(fixed_UT)) {
   uStarRes <- round_df(uStarRes)
   write.csv(uStarRes, row.names = FALSE, 
             file.path(
-              paths$Ustar_filtering,
+              paths$ustar_filtering,
               paste0("Ustar_thresholds_", Tstamp, ".csv")))
   
   # Plot saturation of NEE with UStar for available seasons
   for (i in seq_along(levels(uStarRes$season))) {
     EddyProc.C$sPlotNEEVersusUStarForSeason(
-      levels(uStarRes$season)[i], dir = paths$Ustar_filtering)
+      levels(uStarRes$season)[i], dir = paths$ustar_filtering)
   }
   
   # Use annual or seasonal estimates
@@ -187,7 +187,7 @@ if (is.na(fixed_UT)) {
   
   # Save results to a file for fast reload if needed
   # - ?readRDS
-  saveRDS(UstarThres.df, file.path(paths$Ustar_filtering, "UstarThres.df.rds"))
+  saveRDS(UstarThres.df, file.path(paths$ustar_filtering, "UstarThres.df.rds"))
 }
 
 ### Run gap-filling ============================================================
@@ -220,7 +220,7 @@ EddyProc.C$sMDSGapFill('NEE', FillAll = TRUE, suffix = 'UNone')
 for (met_var in meteo) {
   EddyProc.C$sMDSGapFill(met_var, FillAll = TRUE)
 }
-saveRDS(EddyProc.C, file.path(paths$Gap_filling, "EddyProc.C_GF.rds"))
+saveRDS(EddyProc.C, file.path(paths$gap_filling, "EddyProc.C_GF.rds"))
 
 ### Run flux partitioning ======================================================
 
@@ -250,21 +250,21 @@ for (i in suffixes) {
   }
 }
 # Save reference class and the column names at the end of MR05 FP
-saveRDS(EddyProc.C, file.path(paths$Gap_filling, "EddyProc.C_MR05.rds"))
+saveRDS(EddyProc.C, file.path(paths$gap_filling, "EddyProc.C_MR05.rds"))
 MR05_cols <- colnames(EddyProc.C$sExportResults())
 
 # Lasslop et al. (2010) - further abbreviated as GL10
 FP_GL10_out_list <- vector("list", length(suffixes))
 for (i in suffixes) {
   rm(EddyProc.C)
-  EddyProc.C <- readRDS(file.path(paths$Gap_filling, "EddyProc.C_MR05.rds"))
+  EddyProc.C <- readRDS(file.path(paths$gap_filling, "EddyProc.C_MR05.rds"))
   EddyProc.C$sGLFluxPartition(
     TempVar = paste0(FP_temp, "_f"), 
     QFTempVar = paste0(FP_temp, "_fqc"),
     suffix = i)
   if (i == 'uStar') 
     saveRDS(EddyProc.C, 
-            file.path(paths$Gap_filling, "EddyProc.C_GL10_uStar.rds"))
+            file.path(paths$gap_filling, "EddyProc.C_GL10_uStar.rds"))
   out <- EddyProc.C$sExportResults()
   cols <- colnames(out)
   cols_out <- cols[!cols %in% MR05_cols]
@@ -277,7 +277,7 @@ for (i in suffixes) {
 
 # Column-bind the list with results to single data frame and save GL10 results
 FP_GL10_out <- do.call(cbind, FP_GL10_out_list)
-saveRDS(FP_GL10_out, file.path(paths$Gap_filling, "FP_GL10_out.rds"))
+saveRDS(FP_GL10_out, file.path(paths$gap_filling, "FP_GL10_out.rds"))
 
 ### Make following sections independent on previous processing =================
 
@@ -296,36 +296,36 @@ saveRDS(FP_GL10_out, file.path(paths$Gap_filling, "FP_GL10_out.rds"))
 colnames <- list()
 
 # Save the column names at the end of Reichstein et al. (2005) FP
-FP_MR05 <- readRDS(file.path(paths$Gap_filling, "EddyProc.C_MR05.rds"))
+FP_MR05 <- readRDS(file.path(paths$gap_filling, "EddyProc.C_MR05.rds"))
 colnames$FP_MR05 <- colnames(FP_MR05$sExportResults())
 
 # Save the column names at the end of Lasslop et al. (2005) FP
 # - contains results of only one scenario (uStar)
-FP_GL10_out <- readRDS(file.path(paths$Gap_filling, "FP_GL10_out.rds"))
+FP_GL10_out <- readRDS(file.path(paths$gap_filling, "FP_GL10_out.rds"))
 colnames$FP_GL10 <- colnames(FP_GL10_out)
 
 # Reload the reference class in the state after uStar FP scenario
-EddyProc.C <- readRDS(file.path(paths$Gap_filling, "EddyProc.C_GL10_uStar.rds"))
+EddyProc.C <- readRDS(file.path(paths$gap_filling, "EddyProc.C_GL10_uStar.rds"))
 
 ### Plot the results using REddyProc ===========================================
 
 # Plot daily sums of fluxes with their uncertainties 
 for (Var in c("H_f", "LE_f", "NEE_uStar_f")) {
   EddyProc.C$sPlotDailySums(Var, paste0(Var, "sd"), 
-                            Dir = paths$Plots, Format = plot_as)
+                            Dir = paths$plots, Format = plot_as)
 }
 # Plot fingerprints of relevant variables (with gaps and also gap-filled)
 FP_vars <- c(paste0(meteo, "_f"), "H", "LE", "NEE", "H_f", "LE_f", 
              "NEE_uStar_f", "Reco_uStar", "GPP_uStar_f", "Reco_DT_uStar", 
              "GPP_DT_uStar")
 for (Var in FP_vars) {
-  EddyProc.C$sPlotFingerprint(Var, Dir = paths$Plots, Format = plot_as)
+  EddyProc.C$sPlotFingerprint(Var, Dir = paths$plots, Format = plot_as)
 }
 # Plot diurnal cycle of relevant variables (only gap-filled)
 DC_vars <- c(paste0(meteo, "_f"), "H_f", "LE_f", "NEE_uStar_f", 
              "Reco_uStar", "GPP_uStar_f", "Reco_DT_uStar", "GPP_DT_uStar") 
 for (Var in DC_vars) {
-  EddyProc.C$sPlotDiurnalCycle(Var, Dir = paths$Plots, Format = plot_as)
+  EddyProc.C$sPlotDiurnalCycle(Var, Dir = paths$plots, Format = plot_as)
 }
 
 ### Convert LE to ET and combine ustar filter (UF) with qc_forGF_NEE ===========
@@ -368,7 +368,7 @@ all_out$qc_NEE_forGF_UF <- combn_QC(cbind(ess["qc_NEE_forGF"], qc_uStar),
 all_out <- round_df(all_out)
 write_eddy(all_out,
            file.path(
-             paths$Gap_filling,
+             paths$gap_filling,
              paste0(siteyear, "_GF_full_output_", Tstamp, ".csv")))
 
 # Select the most important variables obtained during gap-filling
@@ -391,12 +391,12 @@ ess_out <- cbind(ess, all_out[ess_vars])
 # - rounding of numerical columns is not needed as 'all_out' is already rounded
 write_eddy(ess_out, 
            file.path(
-             paths$Gap_filling,
+             paths$gap_filling,
              paste0(siteyear, "_GF_essentials_", Tstamp, ".csv")))
 
 # Save documentation about executed gap-filling and flux partitioning 
 document_GF(all_out, Tstamp, name, mail, siteyear, lat, long, tzh,
-            FP_temp, fixed_UT, seasonal_ustar, use_CPD, paths$Gap_filling)
+            FP_temp, fixed_UT, seasonal_ustar, use_CPD, paths$gap_filling)
 
 ### Plot the results using openeddy ============================================
 
@@ -409,28 +409,28 @@ ess_out$timestamp <- strptime_eddy(ess_out$timestamp, "%Y-%m-%d %H:%M",
 # 1) _f: filled flux with original measurements incorporated
 # 2) _fall: filled flux with original measurements excluded
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_H_f_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(ess_out, "H", "qc_H_forGF", "qc_H_forGF",
           flux_gf = "H_f")
 dev.off()
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_H_fall_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(ess_out, "H", "qc_H_forGF", "qc_H_forGF", flux_gf = "H_fall")
 dev.off()
 
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_LE_f_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(ess_out, "LE", "qc_LE_forGF", "qc_LE_forGF",
           flux_gf = "LE_f")
 dev.off()
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_LE_fall_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(ess_out, "LE", "qc_LE_forGF", "qc_LE_forGF",
@@ -448,14 +448,14 @@ MR05 <- ess_out
 MR05_FP_names_filter <- names(MR05) %in% c("Reco_uStar", "GPP_uStar_f")
 names(MR05)[MR05_FP_names_filter] <- c("Reco", "GPP")
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_NEE_uStar_f_MR05_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(MR05, "NEE", "qc_NEE_forGF_UF", "qc_NEE_forGF_UF",
           flux_gf = "NEE_uStar_f", NEE_sep = TRUE)
 dev.off()
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_NEE_uStar_fall_MR05_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(MR05, "NEE", "qc_NEE_forGF_UF", "qc_NEE_forGF_UF",
@@ -466,14 +466,14 @@ GL10 <- ess_out
 GL10_FP_names_filter <- names(GL10) %in% c("Reco_DT_uStar", "GPP_DT_uStar")
 names(GL10)[GL10_FP_names_filter] <- c("Reco", "GPP")
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_NEE_uStar_f_GL10_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(GL10, "NEE", "qc_NEE_forGF_UF", "qc_NEE_forGF_UF",
           flux_gf = "NEE_uStar_f", NEE_sep = TRUE)
 dev.off()
 pdf(file.path(
-  paths$Gap_filling,
+  paths$gap_filling,
   paste0(siteyear, "_NEE_uStar_fall_GL10_", Tstamp, ".pdf")),
   width = 11.00, height = 8.27)
 plot_eddy(GL10, "NEE", "qc_NEE_forGF_UF", "qc_NEE_forGF_UF",

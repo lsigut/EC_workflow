@@ -62,36 +62,31 @@ siteyear <- "KRP16"
 start <- 2016
 end <- 2016
 
+# Load the list of folder structure paths
+# - automated, no input required if proposed folder structure is followed
+paths <- structure_eddy()
+
 # Required input files are meteo data and processed eddy covariance data
 
-# Edit the folder name including meteo data
-# - this folder is created by the user and can contain multiple MeteoDBS files
-#   that will be merged along regular timestamp - check merge_eddy()
+# Meteo data
+# - automated, no input required if proposed folder structure is followed
+# - folder can contain multiple MeteoDBS files to be merged by merge_eddy()
 # - only CSV (csv) files found in the folder will be used
-# - the path is difficult to standardize because it might depend on processing
-#   versioning (e.g. .../EddyProOutput/Run2/Meteo data/)
 # - MeteoDBS groups checklist (30 min): 
 #   1) Radiation: GRin, PARin, Rn
 #   2) Temperature: Ta (from EC height), Ts (from the top soil layer) 
 #   3) Moisture: Ma (from EC height), Ms (from the top soil layer) 
 #   4) Precipitation: sumP
 #   5) Heat flux: HF
-Meteo_path <- "./Level 1/Post-processing/EddyProOutput/Meteo data/"
+Meteo_path <- paths$qc_input_meteo
 
-# Edit the folder name including EddyPro data
-# - this folder is created by the user and can contain multiple EddyPro files
-#   that will be merged along regular timestamp - check merge_eddy()
+# EddyPro data
+# - automated, no input required if proposed folder structure is followed
+# - folder can contain multiple EddyPro files to be merged by merge_eddy()
 # - folder is expected to contain CSV (csv) files with EddyPro data to merge and
 #   optionally also TXT (txt) files with their documentation; their file names 
 #   should differ only in their file extension
-# - the path is difficult to standardize because it might depend on processing
-#   versioning (e.g. .../EddyProOutput/Run2/EddyPro data/)
-EP_path <- "./Level 1/Post-processing/EddyProOutput/EddyPro data/"
-
-# Edit the folder name for output files (data)
-# - the path is difficult to standardize because it might depend on processing
-#   versioning (e.g. .../EddyProOutput/Run2)
-out_path <- "./Level 1/Post-processing/EddyProOutput/"
+EP_path <- paths$qc_input_eddypro
 
 # Timestamp of the computation
 # - automated, will be included in file names
@@ -199,7 +194,7 @@ openeddy::units(data) <- c(openeddy::units(M), openeddy::units(EP[-1]))
 data_name_out <- name_merged(EP_path, siteyear)
 
 # Save the merged Meteo and EddyPro data
-write_eddy(data, file.path(out_path, data_name_out))
+write_eddy(data, file.path(paths$input_for_qc, data_name_out))
 
 # Documentation of merged files
 # - TXT files with the same name as the merged input CSV files are used if 
@@ -208,7 +203,7 @@ write_eddy(data, file.path(out_path, data_name_out))
 # - the documentation file will not be overwritten if it already exists, this is
 #   to avoid overwriting manually edited documentation; to overwrite it, check 
 #   file content and delete it manually if safe
-document_merged(data_name_out, EP_path, Meteo_path, out_path, Tstamp, name, 
-                mail, M)
+document_merged(data_name_out, EP_path, Meteo_path, paths$input_for_qc, Tstamp, 
+                name, mail, M)
 
 # EOF

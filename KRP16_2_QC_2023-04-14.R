@@ -106,9 +106,15 @@ boundary <-
 
 ### Load and format data =======================================================
 
-# Edit the path to required inputs - these are meteo and EddyPro data merged in
-# the previous >data preparation< processing step to a single validated CSV file
-data <- read_eddy("./Level 1/Post-processing/EddyProOutput/eddypro_KrP_full_output_2017-05-20T180735_adv_met.csv")
+# Path to QC input 
+# - automated, no input required if proposed folder structure is followed
+# - these are meteo and EddyPro data merged in the previous >data preparation< 
+#   processing step to a single validated CSV file
+lf <- list.files(paths$input_for_qc, full.names = TRUE)
+data_file <- grep("\\.[Cc][Ss][Vv]$", lf, value = TRUE)[1] # "\\." is literal dot
+if (length(data_file) == 0) stop("no CSV in folder ", 
+                                 sQuote(paths$input_for_qc, q = FALSE ))
+data <- read_eddy(data_file)
 
 # Convert timestamp to POSIXct and shift the date-time information to represent 
 # the center of averaging period which is required for reliable processing
@@ -121,8 +127,8 @@ data$timestamp <- strptime_eddy(data$timestamp, shift.by = shift.by)
 # - choose only names available in data
 precheck <- choose_avail(precheck_vars, names(data))
 
-# Save plots of precheck variable to single pdf at paths$Precheck
-save_precheck_plots(data, precheck, siteyear, Tstamp, paths$Precheck)
+# Save plots of precheck variable to single pdf at paths$precheck
+save_precheck_plots(data, precheck, siteyear, Tstamp, paths$precheck)
 
 # Show dependence of w_unrot on wind direction with additional statistics
 # - png file is saved to respective file path
@@ -131,7 +137,7 @@ save_precheck_plots(data, precheck, siteyear, Tstamp, paths$Precheck)
 #   - qrange has only visual effect, it does not affect computed statistics 
 #   - if you do not want to limit y-axis, set qrange = NULL
 ggsave(file.path(
-  paths$WD_dependency,
+  paths$wd_dependency,
   paste0(siteyear, "_w_unrot_WD_stats_", Tstamp, ".png")),
   ggplot_stats(data, "wind_dir", "w_unrot", circular = TRUE),
   type = "cairo-png", width = 297, height = 210, units = "mm")
@@ -139,7 +145,7 @@ ggsave(file.path(
 # Show dependence of w_rot on wind direction with additional statistics
 # - png file is saved to respective file path
 ggsave(file.path(
-  paths$WD_dependency,
+  paths$wd_dependency,
   paste0(siteyear, "_orig_w_rot_WD_stats_", Tstamp, ".png")),
   ggplot_stats(data, "wind_dir", "w_rot", circular = TRUE),
   type = "cairo-png", width = 297, height = 210, units = "mm")
@@ -168,7 +174,7 @@ if (!w_rot_correction == "none" && rotation_type == "planar fit") {
   # plot the corrected w_rot 
   # - png file is saved to respective file path
   ggsave(file.path(
-    paths$WD_dependency,
+    paths$wd_dependency,
     paste0(siteyear, "_corrected_w_rot_WD_stats_", Tstamp, ".png")),
     ggplot_stats(data, "wind_dir", "w_rot", circular = TRUE),
     type = "cairo-png", width = 297, height = 210, units = "mm")
@@ -178,7 +184,7 @@ if (!w_rot_correction == "none" && rotation_type == "planar fit") {
 # Save flux time series precheck plots with distinguished QC along basic meteo 
 # - SSITC is the standard "Foken flag" (e.g. qc_H) from EddyPro renamed by 
 #   correct() within data_preparation workflow
-save_flux_plots(data, "SSITC", siteyear, "%s_precheck", Tstamp, paths$Precheck, 
+save_flux_plots(data, "SSITC", siteyear, "%s_precheck", Tstamp, paths$precheck, 
                 fluxes)
 
 ### Extract flags of predefined tests/filters ==================================
@@ -254,7 +260,7 @@ if (interactive_session) {
   
   # Update flux time series precheck plots according to prelim2 QC flags
   save_flux_plots(cbind(data, pre2_res), "prelim2", siteyear, "%s_precheck",
-                  Tstamp, paths$Precheck, fluxes)
+                  Tstamp, paths$precheck, fluxes)
 }
 
 ### Apply storage correction ===================================================
@@ -337,7 +343,7 @@ if (interactive_session) {
 
   # Update flux time series precheck plots according to prelim3 QC flags
   save_flux_plots(cbind(data, pre3_res), qc_suffix = "prelim3", siteyear, 
-                  "%s_precheck", Tstamp, paths$Precheck, fluxes)
+                  "%s_precheck", Tstamp, paths$precheck, fluxes)
 }
 
 ### Apply prelim3 filters to fluxes ============================================
@@ -359,7 +365,7 @@ for (i in seq_along(fluxes)) {
 #   and later also to data frame 'data' but it does not allow easy rerunning
 # - returned timestamp is removed in 'man' but kept in saved CSV file
 # - if not interactive and no manual QC found: NULL returned 
-man <- check_manually(cbind(data, pre3_res), paths$Quality_checking, 
+man <- check_manually(cbind(data, pre3_res), paths$quality_checking, 
                       vars = data.frame(
                         x = fluxes,
                         y = c("PAR", "Rn", "Rn", "PAR"),
@@ -394,7 +400,7 @@ pre4_res <- combn_prelim_QC(data, prelim4)
 if (interactive_session) {
   # Update flux time series precheck plots according to prelim4 QC flags
   save_flux_plots(cbind(data, pre4_res), qc_suffix = "prelim4", siteyear, 
-                  "%s_precheck", Tstamp, paths$Precheck, fluxes)
+                  "%s_precheck", Tstamp, paths$precheck, fluxes)
 }
 
 # Apply prelim4 filters to fluxes
@@ -403,7 +409,7 @@ for (i in seq_along(fluxes)) {
   data[orig_fluxes[i]] <- apply_QC(data[, fluxes[i]], pre4_res[, i])
 }
 
-man <- check_manually(cbind(data, pre4_res), paths$Quality_checking, 
+man <- check_manually(cbind(data, pre4_res), paths$quality_checking, 
                       vars = data.frame(
                         x = fluxes,
                         y = c("PAR", "Rn", "Rn", "PAR"),
@@ -458,18 +464,18 @@ names(list_QC) <- paste0(names(forGF), rep(c("", "_cumulative"), each = 4))
 for (i in names(list_QC)) {
   write.csv(list_QC[[i]], 
             file.path(
-              paths$QC_summary,
+              paths$qc_summary,
               paste0(siteyear, "_QC_summary_", i, "_", Tstamp, ".csv")))
 }
 
 # Save the QC summary results as plots
-save_QC_summary_plots(data, forGF, paths$QC_summary, siteyear, Tstamp)
+save_QC_summary_plots(data, forGF, paths$qc_summary, siteyear, Tstamp)
 
 ### Plot the quality checked data ==============================================
 
 # Save the plots that show the data with QC flag used for gap-filling
 save_flux_plots(data, qc_suffix = "forGF", siteyear, "forGF_QC_%s", Tstamp, 
-                paths$Quality_checking, fluxes)
+                paths$quality_checking, fluxes)
 
 ### Write QC results to a file =================================================
 
@@ -490,7 +496,7 @@ OT_in <- set_OT_input(save_data,
 #   in data preparation step
 write_eddy(OT_in, 
            file.path(
-             paths$Input_for_GF,
+             paths$input_for_gf,
              paste0(siteyear, "_", Tstamp, ".txt")),
            quote = FALSE, sep = "\t")
 
@@ -503,7 +509,7 @@ save_data$timestamp <- format(save_data$timestamp, format = "%Y-%m-%d %H:%M",
 #   in data preparation step
 write_eddy(save_data, 
            file.path(
-             paths$Quality_checking,
+             paths$quality_checking,
              paste0(siteyear, "_forGF_QC_full_output_", Tstamp, ".csv")))
 
 # Choose the most important variables to later combine with gap-filling results
@@ -514,11 +520,11 @@ essentials <- choose_avail(essential_vars_QC, names(save_data))
 # Save essential output
 write_eddy(save_data[essentials],
            file.path(
-             paths$Input_for_GF,
+             paths$input_for_gf,
              paste0(siteyear, "_forGF_QC_essentials_", Tstamp, ".csv")))
 
 # Save documentation information about executed quality control 
 names(forGF) <- names(forGF_res)
 document_QC(Tstamp, name, mail, strg_applied, forGF,
-            paths$Quality_checking, siteyear)
+            paths$quality_checking, siteyear)
 #EOF

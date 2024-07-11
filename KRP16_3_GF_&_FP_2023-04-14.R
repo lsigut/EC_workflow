@@ -232,13 +232,22 @@ suffixes <- if (is.na(fixed_UT)) {
 }
 
 # Reichstein et al. (2005) - further abbreviated as MR05
-# - in case not sufficient amount of data, try to reduce TempRange 
+# - TempRange is automatically reduced in case of not sufficient amount of data
+# - if solution was not found for TempRange > 0, consider removing given suffix
 for (i in suffixes) {
-  EddyProc.C$sMRFluxPartition(
-    TempVar = paste(FP_temp, "_f", sep = ""), 
-    QFTempVar = paste(FP_temp, "_fqc", sep = ""),
-    suffix = i,
-    parsE0Regression = list(TempRange = 5))
+  TempRange <- 5
+  repeat {
+    suppressWarnings(
+      EddyProc.C$sMRFluxPartition(
+        TempVar = paste0(FP_temp, "_f"), 
+        QFTempVar = paste0(FP_temp, "_fqc"),
+        suffix = i,
+        parsE0Regression = list(TempRange = TempRange))
+    )
+    TempRange <- TempRange - 1
+    if (TempRange <= 0) stop("MR05 flux partitioning failed for suffix ", i)
+    if (is.null(EddyProc.C$sExportResults()$E_0_NEW[1])) break
+  }
 }
 # Save reference class and the column names at the end of MR05 FP
 saveRDS(EddyProc.C, file.path(paths$Gap_filling, "EddyProc.C_MR05.rds"))
@@ -250,8 +259,8 @@ for (i in suffixes) {
   rm(EddyProc.C)
   EddyProc.C <- readRDS(file.path(paths$Gap_filling, "EddyProc.C_MR05.rds"))
   EddyProc.C$sGLFluxPartition(
-    TempVar = paste(FP_temp, "_f", sep = ""), 
-    QFTempVar = paste(FP_temp, "_fqc", sep = ""),
+    TempVar = paste0(FP_temp, "_f"), 
+    QFTempVar = paste0(FP_temp, "_fqc"),
     suffix = i)
   if (i == 'uStar') 
     saveRDS(EddyProc.C, 
@@ -302,18 +311,18 @@ EddyProc.C <- readRDS(file.path(paths$Gap_filling, "EddyProc.C_GL10_uStar.rds"))
 
 # Plot daily sums of fluxes with their uncertainties 
 for (Var in c("H_f", "LE_f", "NEE_uStar_f")) {
-  EddyProc.C$sPlotDailySums(Var, paste(Var, "sd", sep = ""), 
+  EddyProc.C$sPlotDailySums(Var, paste0(Var, "sd"), 
                             Dir = paths$Plots, Format = plot_as)
 }
 # Plot fingerprints of relevant variables (with gaps and also gap-filled)
-FP_vars <- c(paste(meteo, "_f", sep = ""), "H", "LE", "NEE", "H_f", "LE_f", 
+FP_vars <- c(paste0(meteo, "_f"), "H", "LE", "NEE", "H_f", "LE_f", 
              "NEE_uStar_f", "Reco_uStar", "GPP_uStar_f", "Reco_DT_uStar", 
              "GPP_DT_uStar")
 for (Var in FP_vars) {
   EddyProc.C$sPlotFingerprint(Var, Dir = paths$Plots, Format = plot_as)
 }
 # Plot diurnal cycle of relevant variables (only gap-filled)
-DC_vars <- c(paste(meteo, "_f", sep = ""), "H_f", "LE_f", "NEE_uStar_f", 
+DC_vars <- c(paste0(meteo, "_f"), "H_f", "LE_f", "NEE_uStar_f", 
              "Reco_uStar", "GPP_uStar_f", "Reco_DT_uStar", "GPP_DT_uStar") 
 for (Var in DC_vars) {
   EddyProc.C$sPlotDiurnalCycle(Var, Dir = paths$Plots, Format = plot_as)

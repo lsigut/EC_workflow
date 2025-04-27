@@ -8,6 +8,16 @@
 #
 # Code developed by Ladislav Sigut (sigut.l@czechglobe.cz).
 
+#' Supported Fluxes
+#'
+#' A complete set of supported fluxes in eddy covariance workflow.
+#'
+#' While users can utilize [openeddy] to create their own processing workflow
+#' for any set of fluxes or variables, the original intent was to process
+#' specified fluxes. The processing workflow is available here:
+#' <https://github.com/lsigut/EC_workflow>.
+fluxes <- c("Tau", "H", "LE", "NEE")
+
 # Attach an R package
 # package: A character string specifying single package
 # github: A character string specifying github repository

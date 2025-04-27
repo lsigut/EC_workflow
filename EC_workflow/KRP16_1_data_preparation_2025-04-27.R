@@ -8,8 +8,8 @@
 # openeddy and REddyProc packages. If Meteo contains replicates of the same
 # variable, mean of all replicates and their QC is returned. It is expected that
 # Meteo data underwent separate quality control and gap-filling (not in the
-# scope of openeddy). Notice that especially gaps in incoming radiation (PAR or
-# shortwave radiation) can have negative impact on the reliability and quality
+# scope of openeddy). Notice that especially gaps in incoming radiation (GR -
+# global radiation) can have negative impact on the reliability and quality
 # of the final products.
 #
 # You can find example data set at https://doi.org/10.5281/zenodo.6631498
@@ -38,47 +38,33 @@ source("utilities.R")
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-attach_pkg("tidyverse") # required for tribble()
+attach_pkg("tibble") # required for tribble()
 
 # Check if openeddy version conforms to requirements
-if (packageVersion("openeddy") == package_version("0.0.0.9006"))
+if (packageVersion("openeddy") < package_version("0.0.0.9009"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006'")
+          "'0.0.0.9009'")
 
 ### Provide metadata and set file paths and arguments ==========================
 
-# Contact information
-name <- "Ladislav Sigut" # person that performed processing
-mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
-
-# Edit the siteyear
-# - included in folder and file names
-siteyear <- "KRP16"
-
-# Edit the start and end of time period to post-process
-# - start <- 2016; end <- 2016: to assure complete year
-# - start <- NULL; end <- NULL: use timestamp extent from input files
-# - start <- "2016-02-01 10:00:00"; end <- "2017-02-01 10:00:00": arbitrary period
-start <- 2016
-end <- 2016
+# Load the site-year settings file
+settings_file <- list.files(pattern = "settings.R", full.names = TRUE)
+source(settings_file)
 
 # Load the list of folder structure paths
 # - automated, no input required if proposed folder structure is followed
-paths <- structure_eddy()
+paths <- make_paths()
 
 # Required input files are meteo data and processed eddy covariance data
 
 # Meteo data
 # - automated, no input required if proposed folder structure is followed
-# - folder can contain multiple MeteoDBS files to be merged by merge_eddy()
-# - only CSV (csv) files found in the folder will be used
-# - MeteoDBS groups checklist (30 min): 
+# - Meteo groups checklist (30 min): 
 #   1) Radiation: GRin, PARin, Rn
 #   2) Temperature: Ta (from EC height), Ts (from the top soil layer) 
 #   3) Moisture: Ma (from EC height), Ms (from the top soil layer) 
 #   4) Precipitation: sumP
 #   5) Heat flux: HF
-Meteo_path <- paths$qc_input_meteo
 
 # EddyPro data
 # - automated, no input required if proposed folder structure is followed
@@ -86,54 +72,42 @@ Meteo_path <- paths$qc_input_meteo
 # - folder is expected to contain CSV (csv) files with EddyPro data to merge and
 #   optionally also TXT (txt) files with their documentation; their file names 
 #   should differ only in their file extension
-EP_path <- paths$qc_input_eddypro
 
 # Timestamp of the computation
 # - automated, will be included in file names
 Tstamp <- format(Sys.time(), "%Y-%m-%d") 
 
-# Set MeteoDBS mapping =========================================================
-
-# Edit MeteoDBS mapping according to available variables at given site
-# - regular expressions (?regex) can be used to select replicates of given 
-#   variable (e.g. Ts) that will be averaged by remap_vars()
-# - typical set of variables: global radiation (GR), photosynthetically active
-#   radiation (PAR), Net radiation (Rn), air temperature (Tair), soil 
-#   temperature (Tsoil), relative humidity (RH), vapor pressure dificit (VPD),
-#   soil water content (SWC), precipitation (P), soil heat flux (G)
-# - variables required by openeddy: PAR, Rn, Tair, Tsoil, VPD, P (only PAR
-#   really needed for optimal setup, the rest can be initialized with NA values)
-# - variables required by REddyProc: GR, Tair, Tsoil, VPD (and/or RH)	
-Met_mapping <- tribble(
-  ~MeteoDBS_varname, ~workflow_varname,
-  "date/time",       "timestamp",
-  "GRin",            "GR",
-  "PARin",           "PAR",
-  "^Rn",             "Rn",
-  "TaKA02.0",        "Tair",
-  "TsKO0.05",        "Tsoil",
-  "RHKA02.0",        "RH",
-  "VPDKA02.0",       "VPD",
-  "sumP",            "P"
-)
-
 ### Load and format Meteo data =================================================
 
-# read_MeteoDBS() reads all meteo files at Czechglobe MeteoDBS format at given
-# path and merges them together. The expectation is that files represent meteo
-# variables for given site and different periods. Function merges them
-# vertically (along generated complete timestamp). Original column names are
-# retained for reliable variable remapping.
-M <- read_MeteoDBS(Meteo_path, start = start, end = end)
+# read_eddy() reads single meteo CSV file including units (placed on the second 
+# row below header) at a standardized path. 
+mf <- list.files(paths$qc_input_meteo, pattern = "\\.[Cc][Ss][Vv]$",
+                 full.names = TRUE)[1]
+M <- read_eddy(mf, check.names = FALSE)
 
 # Rename Meteo data variables as required by openeddy and REddyProc packages
 # - other columns than those included in Met_mapping table are dropped
 # - not available columns are reported and automatically initialized with NAs
-M <- remap_vars(M, Met_mapping$workflow_varname, Met_mapping$MeteoDBS_varname,
+M <- remap_vars(M, Met_mapping$workflow_varname, Met_mapping$Meteo_varname,
                 regexp = TRUE, qc = "_qcode")
 
+# strptime_eddy() rewrites the original varname of the timestamp column 
+# - retain the original varname for documentation purposes
+vars <- openeddy::varnames(M)
+
+# timestamp requires conversion to POSIXct for validation
+M$timestamp <- strptime_eddy(M$timestamp, format = meteo_format, 
+                             allow_gaps = TRUE)
+
+# reset original varnames 
+openeddy::varnames(M) <- vars
+
+# merge_eddy() assures that timestamp is complete and has defined range
+M <- merge_eddy(list(M), start = start, end = end)
+
 # Correct units
-# - not included in correct() as it is Czech(globe) specific
+# - not included in correct() as it is Czechglobe specific formatting
+# - it should not impact sites with other formatting
 openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
 
 ### Load and format EddyPro full output ========================================
@@ -153,7 +127,7 @@ openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
 #   correct match across files is not automated)
 # - older versions of EddyPro had more duplicated column names in the output
 # - old EddyPro column name "max_speed" is corrected to "max_wind_speed" 
-EP <- read_EddyPro(EP_path, start = start, end = end, skip = 1, 
+EP <- read_EddyPro(paths$qc_input_eddypro, start = start, end = end, skip = 1, 
                    fileEncoding = "UTF-8")
 
 # Correct column names
@@ -178,7 +152,8 @@ names(EP)[names(EP) %in% c("RH", "VPD")] <- c("RH_EddyPro", "VPD_EddyPro")
 data <- merge(M, EP)
 nrow(data) # if 0 rows, M & EP shared more columns than just timestamp
 
-# Change the timestamp formatting to its original state
+# Change the timestamp formatting to default timestamp format
+# - format = "%Y-%m-%d %H:%M" is enforced to simplify further processing steps
 data$timestamp <- format(data$timestamp, format = "%Y-%m-%d %H:%M", tz = "GMT")
 
 # Round the columns of numeric mode type double to 6 significant digits
@@ -191,7 +166,7 @@ openeddy::units(data) <- c(openeddy::units(M), openeddy::units(EP[-1]))
 # Save the merged data with documentation ======================================
 
 # Set the name of merged output file
-data_name_out <- name_merged(EP_path, siteyear)
+data_name_out <- name_merged(paths$qc_input_eddypro, siteyear)
 
 # Save the merged Meteo and EddyPro data
 write_eddy(data, file.path(paths$input_for_qc, data_name_out))
@@ -203,7 +178,8 @@ write_eddy(data, file.path(paths$input_for_qc, data_name_out))
 # - the documentation file will not be overwritten if it already exists, this is
 #   to avoid overwriting manually edited documentation; to overwrite it, check 
 #   file content and delete it manually if safe
-document_merged(data_name_out, EP_path, Meteo_path, paths$input_for_qc, Tstamp, 
+document_merged(data_name_out, paths$qc_input_eddypro, paths$qc_input_meteo, 
+                paths$input_for_qc, Tstamp, 
                 name, mail, M)
 
 # EOF

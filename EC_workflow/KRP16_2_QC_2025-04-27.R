@@ -34,75 +34,27 @@ source("utilities.R")
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-packages <- c("tidyverse", "ggplot2", "gridExtra", "reshape2")
+packages <- c("tibble", "ggplot2", "gridExtra", "reshape2")
 invisible(lapply(packages, attach_pkg))
 
 # Check if openeddy version conforms to requirements
-if (packageVersion("openeddy") == package_version("0.0.0.9008"))
+if (packageVersion("openeddy") < package_version("0.0.0.9009"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9008'")
+          "'0.0.0.9009'")
 
 ### Provide metadata and set file paths and arguments ==========================
 
-# Contact information
-name <- "Ladislav Sigut" # person that performed processing
-mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
-
-# Edit the siteyear
-# - included in folder and file names
-siteyear <- "KRP16"
-
-# Do you want to perform manual data quality check? 
-# - default interactive_session <- TRUE is currently recommended
-# - it mainly affects manual QC step >check_manually()<
-# - set FALSE if you want to simply rerun this workflow part  
-# - if FALSE, informative plotting will be skipped
-# - if FALSE, manual QC will be still used if created previously
-interactive_session <- TRUE
-
-# Do you want to apply storage correction to H, LE and CO2 flux?
-# - currently only storage correction estimated by EddyPro using discrete 
-#   (one point) approach is implemented
-# - if TRUE, storage flux is added to the respective original flux
-# - recommended for sites with short canopy, e.g. grasslands, wetlands, 
-#   croplands
-apply_storage <- TRUE
-
-# Specify the type of coordinate rotation applied during EddyPro processing
-# - supported rotation types: 
-#   - "double": for double (2D) rotation
-#   - "planar fit": for planar fit rotation
-rotation_type <- "double"
-
-# Specify the type of IRGA used in eddy covariance system
-# - supported IRGA types: 
-#   - "en_closed": both for closed and enclosed path systems 
-#   - "open": for open path systems
-IRGA_type <- "en_closed"
+# Load the site-year settings file
+settings_file <- list.files(pattern = "settings.R", full.names = TRUE)
+source(settings_file)
 
 # Load the list of folder structure paths
 # - automated, no input required if proposed folder structure is followed
-paths <- structure_eddy()
-
-# Specify the time shift (in seconds) to be applied to the date-time information
-# in order to represent the center of averaging period
-shift.by <- -900
+paths <- make_paths()
 
 # Timestamp of the computation
 # - automated, will be included in file names
 Tstamp <- format(Sys.time(), "%Y-%m-%d") 
-
-# Set Fetch filter boundary ====================================================
-
-# Edit the region of interest boundary for your site
-# - here KRP boundary version 20160206
-# - see ROI boundary concept description at https://github.com/lsigut/EC_workflow
-boundary <- 
-  c(453, 489, 469, 455, 444, 410, 375, 348, 86, 82, 78, 76, 74, 73, 72, 72, 73, 
-    74, 76, 78, 81, 85, 91, 97, 106, 116, 114, 113, 131, 372, 496, 500, 507, 
-    519, 531, 541, 555, 562, 565, 572, 584, 605, 633, 749, 863, 1012, 1128, 
-    1098, 802, 863, 871, 903, 403, 360, 328, 303, 283, 486, 466, 451, 441, 412, 
-    390, 373, 360, 350, 349, 356, 367, 381, 399, 422)
 
 ### Load and format data =======================================================
 
@@ -110,11 +62,11 @@ boundary <-
 # - automated, no input required if proposed folder structure is followed
 # - these are meteo and EddyPro data merged in the previous >data preparation< 
 #   processing step to a single validated CSV file
-lf <- list.files(paths$input_for_qc, full.names = TRUE)
-data_file <- grep("\\.[Cc][Ss][Vv]$", lf, value = TRUE)[1] # "\\." is literal dot
-if (length(data_file) == 0) stop("no CSV in folder ", 
+lf <- list.files(paths$input_for_qc, pattern = "\\.[Cc][Ss][Vv]$",
+                 full.names = TRUE)[1] # "\\." is literal dot
+if (length(lf) == 0) stop("no CSV in folder ", 
                                  sQuote(paths$input_for_qc, q = FALSE ))
-data <- read_eddy(data_file)
+data <- read_eddy(lf)
 
 # Convert timestamp to POSIXct and shift the date-time information to represent 
 # the center of averaging period which is required for reliable processing
@@ -123,7 +75,7 @@ data$timestamp <- strptime_eddy(data$timestamp, shift.by = shift.by)
 ### Plot data for visual precheck ==============================================
 
 # Save plots of variables that can help identify problems with instruments
-# - precheck_vars is an object defined within openeddy
+# - precheck_vars is an object defined within siteyear_settings.R file
 # - choose only names available in data
 precheck <- choose_avail(precheck_vars, names(data))
 
@@ -291,20 +243,25 @@ desp <- data[0]
 
 # Low frequency data despiking is not applied for Tau
 # - change qrange if needed
+# - red circles show identified spikes
 plot_precheck(data, "H_orig", qrange = c(0, 1), pch = 19)
 desp$qc_H_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "H", qc_flag = "qc_H_prelim2",
             name_out = "qc_H_spikesLF", var_thr = c(-200, 800))
+points(H_orig ~ timestamp, data[as.logical(desp$qc_H_spikesLF), ], col = "red")
 
 plot_precheck(data, "LE_orig", qrange = c(0, 1), pch = 19)
 desp$qc_LE_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "LE", qc_flag = "qc_LE_prelim2",
             name_out = "qc_LE_spikesLF", var_thr = c(-200, 800))
+points(LE_orig ~ timestamp, data[as.logical(desp$qc_LE_spikesLF), ], col = "red")
 
 plot_precheck(data, "NEE_orig", qrange = c(0.005, 0.995), pch = 19)
 desp$qc_NEE_spikesLF <- 
   despikeLF(cbind(data, pre2_res), var = "NEE", qc_flag = "qc_NEE_prelim2",
             name_out = "qc_NEE_spikesLF", var_thr = c(-100, 100))
+points(NEE_orig ~ timestamp, data[as.logical(desp$qc_NEE_spikesLF), ], 
+       col = "red")
 
 # Check the results
 # - the test has 3 outcomes: 0 - OK; 2 - spike; NA - excluded from despiking

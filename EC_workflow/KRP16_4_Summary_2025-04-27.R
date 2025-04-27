@@ -27,18 +27,18 @@ source("utilities.R")
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-attach_pkg("openair")
+attach_pkg("openair", "tibble")
 
 # Check if openeddy version conforms to requirements
-if (packageVersion("openeddy") == package_version("0.0.0.9006"))
+if (packageVersion("openeddy") < package_version("0.0.0.9009"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006'")
+          "'0.0.0.9009'")
 
 ### Provide metadata and set file paths and arguments ==========================
 
-# Edit the siteyear
-# - included in file names
-siteyear <- "KRP16"
+# Load the site-year settings file
+settings_file <- list.files(pattern = "settings.R", full.names = TRUE)
+source(settings_file)
 
 # Timestamp of the computation
 # - automated, will be included in file names
@@ -46,13 +46,13 @@ Tstamp <- format(Sys.time(), "%Y-%m-%d")
 
 # Load the list of folder structure paths
 # - automated, no input required if proposed folder structure is followed
-paths <- structure_eddy()
+paths <- make_paths()
 
 # Input path for summary (automated)
 # - gap-filled and partitioned data
-path_in <- grep(paste0(siteyear, ".*GF_essentials.*csv"), 
-                list.files(paths$gap_filling, full.names = TRUE),
-                value = TRUE)
+path_in <- list.files(paths$gap_filling, 
+                      pattern = paste0(siteyear, ".*GF_essentials.*csv"),
+                      full.names = TRUE)[1]
 
 # Specify the time shift (in seconds) to be applied to the date-time information
 # in order to represent the center of averaging period
@@ -68,22 +68,9 @@ head(data$timestamp)
 
 ### Plot half-hourly data before unit conversion ===============================
 
-# Specify variables needed for different procedures later 
-# - used for averaging, summation, uncertainty estimation and plotting
-# - GWL (ground water level), SWC (soil water content) and G (soil heat flux)
-#   are not available in KRP16 example data set
-mean <- c("Tair", "Tsoil", "RH", "VPD", "GR", "Rn", "PAR", "GWL", "SWC", "G", 
-          "H_f", "H_fqc", "LE_f", "LE_fqc", "ET_f", "ET_fqc", 
-          "NEE_uStar_f", "NEE_uStar_fqc", "GPP_uStar_f", "GPP_DT_uStar", 
-          "Reco_uStar", "Reco_DT_uStar")
 mean <- choose_avail(mean, names(data))
-sum <- c("P", "GR", "Rn", "PAR", "G", "H_f", "LE_f", "ET_f", 
-         grep("(NEE|GPP).+f$", names(data), value = TRUE),
-         grep("GPP_DT.+[^D]$", names(data), value = TRUE),
-         grep("Reco.+[^D]$", names(data), value = TRUE))
 sum <- choose_avail(sum, names(data))
-err_agg <- grep("(^H|^LE|^ET|^NEE|^Reco|^GPP).*(sd|SD)$", names(data), 
-                value = TRUE)
+err_agg <- choose_avail(err_agg, names(data))
 
 # Specify variables for plots at half-hour resolution
 hh_vars <- grep("[^c]$", unique(c(mean, sum, err_agg)), value = TRUE)
@@ -319,33 +306,9 @@ for (interval in c("daily", "weekly", "monthly")) {
   }
 }
 
-### Compute Griebel et al. (2020) budgets ======================================
-
-# Compute budgets with different consideration of space-time equity
-G20 <- Griebel20_budgets(
-  data, "timestamp", "wind_dir", "NEE_uStar_f", "NEE_uStar_fqc")
-
-# Fix random number generator state before spti_boot() for reproducible results
-set.seed(621)
-
-# Estimate uncertainty of space-time-equitable budgets
-spti_unc <- spti_boot(
-  data, "timestamp", "wind_dir", "NEE_uStar_f", "NEE_uStar_fqc")
-
-# Calculate spatio-temporal sampling coverage
-spti_cov <- spti_coverage(
-  data, "timestamp", "wind_dir", "NEE_uStar_f", "NEE_uStar_fqc")
-
-# Combine, round and save results
-# - traditional_budget and standardized_budget differ only if multiple years 
-#   are included
-G20_all <- round_df(cbind(G20[-6], spti_unc[-(1:2)], spti_cov[-1]))
-write_eddy(G20_all, 
-           file.path(
-             paths$summary,
-             paste0(siteyear, "_Griebel_et_al_2020_budgets_", Tstamp, ".csv")))
-
 ### Plot spatio-temporal sampling coverage to pdf and png ======================
+
+# - see Griebel et al. (2020) or ?spti_coverage for details
 
 # Create a list of ggplot objects
 spti_covp <- spti_coverage(

@@ -34,16 +34,16 @@ attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
 # - see https://github.com/bgctw/REddyProc if mlegp not available
-packages <- c("REddyProc", "bigleaf", "mlegp")
+packages <- c("REddyProc", "bigleaf", "mlegp", "tibble")
 invisible(lapply(packages, attach_pkg))
 
 # Check if openeddy version conforms to requirements
-if (packageVersion("openeddy") == package_version("0.0.0.9006"))
+if (packageVersion("openeddy") < package_version("0.0.0.9009"))
   warning("this version of workflow works reliably only with openeddy version ",
-          "'0.0.0.9006'")
+          "'0.0.0.9009'")
 
 # Check if REddyProc version conforms to requirements
-if (packageVersion("REddyProc") == package_version("1.3.0"))
+if (packageVersion("REddyProc") < package_version("1.3.0"))
   warning("this version of workflow works reliably with REddyProc ",
           "version '1.3.0'")
 
@@ -59,72 +59,31 @@ if (packageVersion("REddyProc") == package_version("1.3.0"))
 
 ### Provide metadata and set file paths and arguments ==========================
 
-# Contact information
-name <- "Ladislav Sigut" # person that performed processing
-mail <- "sigut.l@czechglobe.cz" # mail of the person that performed processing
-
-# Edit the siteyear
-# - included in file names
-siteyear <- "KRP16"
-
-# Specify site metadata
-lat <- 49.5732575 # edit site latitude
-long <- 15.0787731 # edit site longtitude
-tzh <- 1 # timezone hour
+# Load the site-year settings file
+settings_file <- list.files(pattern = "settings.R", full.names = TRUE)
+source(settings_file)
 
 # Load the list of folder structure paths
 # - automated, no input required if proposed folder structure is followed
-paths <- structure_eddy()
+paths <- make_paths()
 
-# Specify meteo variables that will be plotted, gap-filled and exported
+# Meteo variables that will be plotted, gap-filled and exported
+# - FP expects Meteo columns produced during GF (even if no gaps in Meteo)
+# - minimal set must be: c('Rg', 'Tair', 'Tsoil', 'VPD')
 meteo <- c('Rg', 'Tair', 'Tsoil', 'VPD')
 
-# Temperature used for flux partitioning ('Tsoil' or 'Tair') 
-# - default: FP_temp <- 'Tsoil'
-# - note that MDS gap-filling is based on 'Tair'
-FP_temp <- 'Tsoil'
-
-# Save figures as "png" (default) or "pdf"
-# - NEEvsUStar plots are fixed to "pdf"
-plot_as <- "png" 
-
-# Specify the time shift (in seconds) to be applied to the date-time information
-# in order to represent the center of averaging period
-shift.by <- -900
-
 # The path where input for gap-filling is located (automated)
-input <- grep(paste0(siteyear, ".*txt"), 
-              list.files(paths$input_for_gf, full.names = TRUE),
-              value = TRUE)
+input <- list.files(paths$input_for_gf, pattern = paste0(siteyear, ".*txt"),
+                    full.names = TRUE)[1]
 
 # The path where file with essential variables is located (automated)
-ess_in <- grep(paste0(siteyear, ".*essentials.*csv"), 
-               list.files(paths$input_for_gf, full.names = TRUE),
-               value = TRUE)
+ess_in <- list.files(paths$input_for_gf, 
+                     pattern = paste0(siteyear, ".*essentials.*csv"),
+                     full.names = TRUE)[1]
 
 # Timestamp of the computation
 # - automated, will be included in file names
 Tstamp <- format(Sys.time(), "%Y-%m-%d") 
-
-# Set fixed ustar threshold if needed (skip ustar threshold estimation)
-# - default is: fixed_UT <- NA; i.e. UT estimation is recommended
-# - if provided, seasonal_ustar and use_CPD settings will be ignored
-fixed_UT <- NA
-
-# Choose ustar threshold estimation method resolution
-# - either seasonal ustar threshold (seasonal_ustar <- TRUE; default)
-# - or annual thresholds (seasonal_ustar <- FALSE)
-# - seasonal UT is recommended as it keeps more data (see Wutzler et al., 2018)
-seasonal_ustar <- TRUE
-
-# Should change-point detection (CPD) method (Barr et al. 2013) be used 
-# (use_CPD <- TRUE) instead of classical approach (Reichstein et al. 2005, 
-# Papale et al. 2006) using binned classes of ustar and temperature? 
-# (use_CPD <- FALSE; default)
-# The changepoint is estimated based on the entire subset within one season 
-# and one temperature class; currently using argument 'isUsingCPTSeveralT' 
-# of function usControlUstarEst()
-use_CPD <- FALSE
 
 ### Prepare REddyProc input data ===============================================
 

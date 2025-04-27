@@ -31,7 +31,7 @@ long <- 15.0787731 # edit site longtitude
 tzh <- 1 # timezone hour
 
 
-# WF1: data_preparation ========================================================
+# WF_1_data_preparation ========================================================
 
 # Set Meteo mapping
 # - edit Meteo mapping according to available variables at given site
@@ -61,7 +61,7 @@ Met_mapping <- tribble(
 # - default: "%Y-%m-%d %H:%M"
 meteo_format <- "%Y-%m-%d %H:%M"
 
-# WF2: QC (quality control) ====================================================
+# WF_2_QC (quality control) ====================================================
 
 # Do you want to perform manual data quality check? 
 # - default interactive_session <- TRUE is currently recommended
@@ -138,7 +138,7 @@ essential_vars_QC <- c(
   "qc_NEE_SSITC", "rand_err_NEE", "H_strg", "LE_strg", "co2_strg", "wind_speed",
   "wind_dir", "ustar", "L", "zeta", "model", "x_peak", "x_70perc")
 
-# WF3: GF_&_FP (gap filling and flux partitioning) =============================
+# WF_3_GF_&_FP (gap filling and flux partitioning) =============================
 
 # Temperature used for flux partitioning ('Tsoil' or 'Tair') 
 # - default: FP_temp <- 'Tsoil'
@@ -169,7 +169,7 @@ seasonal_ustar <- TRUE
 # of function usControlUstarEst()
 use_CPD <- FALSE
 
-# WF4: Summary =================================================================
+# WF_4_Summary =================================================================
 
 # Specify variables needed for different procedures during aggregation 
 # - used for averaging, summation, uncertainty estimation and plotting

@@ -8,9 +8,10 @@
 The eddy covariance (EC) workflow demonstrates how to use
 [openeddy](https://github.com/lsigut/openeddy) package together with
 [REddyProc](https://github.com/bgctw/REddyProc) package to facilitate
-automated and reproducible EC data post-processing. The presented EC
-workflow is a set of post-processing steps that were applied for a
-particular cropland site
+automated and reproducible EC data post-processing, supporting Tau, H,
+LE and CO<sub>2</sub> (NEE) fluxes. The presented EC workflow is a set
+of post-processing steps that were applied for a particular cropland
+site
 [CZ-KrP](http://www.europe-fluxdata.eu/home/site-details?id=CZ-KrP). The
 main purpose of EC workflow is to show how to utilize the `openeddy`
 software infrastructure. It is not meant to represent the optimal best
@@ -42,11 +43,11 @@ EC workflow](#naming-strategy-with-the-ec-workflow)):
 |:-----------------------------------------|:--------------|
 | GR, PAR, Rn, Tair, Tsoil, VPD (or RH), P | GR, Tair      |
 
-Gaps in meteorological data are allowed (except for PAR needed for
-day/night data separation in `despikeLF()`), but `REddyProc` gap filling
-of meteorological data performs well mostly for short gaps. Minimum
-setup describes bare minimum needed for used functions and would require
-adaptations of the workflow.
+Gaps in meteorological data are allowed (except for global radiation,
+GR, needed for day/night data separation in `despikeLF()`), but
+`REddyProc` gap filling of meteorological data performs well mostly for
+short gaps. Minimum setup describes bare minimum needed for used
+functions and would require adaptations of the workflow.
 
 Processing of multiple or incomplete years is supported but it requires
 edits in EC workflow scripts. Note that for data fragments shorter than
@@ -59,10 +60,17 @@ of extrapolating data from a short measurement period to a much larger
 period (e.g. you cannot use few months of measurements to obtain annual
 budgets).
 
-Adapting workflow for a new site mainly requires column renaming
-(variable names expected by used packages), preferably within EC
-workflow code (alternatively directly in input data). Support for other
-EC processing
+**Adapting workflow for a new site** mainly requires to edit the
+`KRP16_0_settings_2025-04-27.R` file according to provided comments.
+Other workflow files should remain unchanged. Settings edits include
+renaming of meteorological variables to workflow standard (`Met_mapping`
+object) and defining region of interest (ROI) `boundary`. In order to
+run `fetch_filter()`, `QC` workflow requires the ROI `boundary` for
+given site-year. ROI is provided by the user in a form of numeric vector
+(see [ROI boundary](#roi-boundary) section below and
+<https://github.com/lsigut/ROI_boundary>).
+
+Support for other EC processing
 [software](https://ameriflux.lbl.gov/resources/resource-list/tools-and-software-for-flux-scientists/raw-data-processing-and-qa-qc/)
 (e.g. TK3, EdiRe, EddyUH, EddySoft) is not explicitly provided but
 alternative workflow should be achievable already with the existing
@@ -70,16 +78,10 @@ alternative workflow should be achievable already with the existing
 using the pairing of column names of `EddyPro` full output and the EC
 processing software used. `EddyPro`-specific tests/filters mainly
 present in `extract_QC()` would need to be substituted for their
-alternatives. The `KRP16` micrometeorological (meteo) data are formatted
-in a specific way that is handled by specialized function
-`read_MeteoDBS()`. To achieve similar results, you can use `read_eddy()`
-in combination with `merge_eddy()` to read and validate general data
-frame with meteo data.
-
-In order to run `fetch_filter()`, QC workflow also requires the region
-of interest (ROI) outline for given site-year. ROI is provided by the
-user in a form of numeric vector (see *ROI boundary* section below and
-<https://github.com/lsigut/ROI_boundary>).
+alternatives. Similarly, support for CH<sub>4</sub>, N<sub>2</sub>O or
+other trace gases is not planned, however they should be feasible to
+some degree (note that look-up tables might not be optimal for gap
+filling of such fluxes).
 
 ## Usage
 
@@ -89,24 +91,28 @@ Download `KRP16 - before processing.zip` from
 [Zenodo](https://doi.org/10.5281/zenodo.7828751) and unzip. Run workflow
 files in specified order according to instructions there:
 
-1.  `data_preparation` workflow: formatting and merging inputs.
-2.  `QC` workflow: eddy covariance quality control and storage
-    correction.
-3.  `GF_&_FP` workflow: uStar filtering, gap filling and flux
-    partitioning.
-4.  `Summary` workflow: aggregation and plotting of results.
+1.  `WF_1_data_preparation`: formatting and merging inputs.
+2.  `WF_2_QC`: eddy covariance quality control and storage correction.
+3.  `WF_3_GF_&_FP`: uStar filtering, gap filling and flux partitioning.
+4.  `WF_4_Summary`: aggregation and plotting of results.
 
-All workflows should be first adapted to given site-year properties and
-commands run one by one, following the included instructions suggesting
-edits when needed. The workflow files are structured so that mostly only
-the upper sections require user inputs while the remainder is mostly
-automated.
+For a new site-year, `settings` workflow file should be edited first.
+File prefix `KRP16` can be changed to identify related site-year. Date
+suffix identifies workflow version and should not be edited. Workflow
+file `utilites` is required by the workflow scripts and is not meant for
+user interaction.
+
+Commands in `WF_1` and `WF_2` should be run one by one, to get better
+feedback about problems with data inputs or data quality. Especially
+`WF_2` includes interactive function (`check_manually()`) that requires
+direct user input. `WF_3` should require minimal user supervision.
+`WF_4` can be `source()`d.
 
 Note that using `source()` for the QC workflow will not produce desired
 outcome if variable `interactive = TRUE` because `check_manually()` will
 expect interactive session (manual marking of outliers). Once the manual
-QC is finalized and saved, changing to `interactive = FALSE` allows to
-reproduce the results by sourcing.
+QC is finalized and saved, changing to `interactive = FALSE` in
+`settings` allows to reproduce the results by sourcing.
 
 You can compare your results with those of `KRP16 - processed.zip` at
 [Zenodo](https://doi.org/10.5281/zenodo.6631498). Notice that in order
@@ -124,8 +130,8 @@ processing chain consisting of four stages:
     saved with documentation. All numeric values are rounded to a
     reasonable precision. Meteo variable names are remapped according to
     the requirements of `openeddy` and `REddyProc` packages.
-    `data_preparation` workflow produces files at
-    `.\level_1\input_for_qc\` folder.
+    `WF_1_data_preparation` produces files at `.\level_1\input_for_qc\`
+    folder.
 
 2.  **Quality control:** load the `EddyPro` output and gap-filled
     meteorological data and apply automated tests and filters
@@ -138,25 +144,25 @@ processing chain consisting of four stages:
     increasing EC measurement height. Computation of storage flux from
     profile measurements is not in the scope of `openeddy`. Export
     documentation of applied QC and produce the outputs needed in next
-    steps. `QC` workflow produces files at `.\level_2\quality_checking\`
-    and `.\level_2\input_for_gf\` folders.
+    steps. `WF_2_QC` produces files at `.\level_2\quality_checking\` and
+    `.\level_2\input_for_gf\` folders.
 
 3.  **Gap filling and flux partitioning:** use `REddyProc` to estimate
     uStar threshold, apply uStar filtering, gap fill (H, LE, NEE) and
     partition (NEE) fluxes. Use `openeddy` to visualize H, LE and NEE
     fluxes. The setup allows to change and document some processing
-    options in an organized way. `GF_&_FP` workflow produces files at
+    options in an organized way. `WF_3_GF_&_FP` produces files at
     `.\level_3\gap_filling\`.
 
 4.  **Summary:** visualize processed data, convert units and aggregate
     results to daily, weekly, monthly and yearly timescales. A limited
     amount of computed parameters is also produced, including different
-    uncertainty estimates. `Summary` workflow produces files at
+    uncertainty estimates. `WF_4_Summary` produces files at
     `.\level_3\summary\`.
 
 The EC workflow assumes certain folder structure for each site-year that
 makes data handling more effective. The folder structure can be created
-using `structure_eddy()` with following content:
+using `make_paths()` with following content:
 
     site_year
     ├── level_1
@@ -205,7 +211,7 @@ following diagram.
 
 </p>
 
-In `openeddy`, EddyPro software serves as a way of input data
+In `openeddy`, `EddyPro` software serves as a way of input data
 standardization. Data frames have defined column names and units with
 conserved data formatting. This property is used to easily read the
 expected columns, thus the typical input data structure of most
@@ -222,11 +228,12 @@ This approach allows to evaluate a complete set of QC filters and select
 for application only those with the best flagging efficiency (trade-off
 between the count of removed spurious records and the amount of
 available records after the QC filter application). Note that such
-selected QC scheme can depend also on the type of following analysis.
-E.g. if the data will be used to compute annual budgets, outlying values
-would bias the look-up table statistics when filling gaps and thus
-should be removed. On the other hand, if the focus of following analysis
-are exceptional fluxes, outlying values should be kept.
+selected QC scheme can depend also on the type of follow up analysis
+(data application). E.g. if the data will be used to compute annual
+budgets, outlying values would bias the look-up table statistics when
+filling gaps and thus should be removed. On the other hand, if the focus
+of following analysis are exceptional fluxes, outlying values should be
+kept and analyzed.
 
 <p align="center">
 
@@ -236,9 +243,9 @@ are exceptional fluxes, outlying values should be kept.
 
 The application of QC filters depends on whether the applied filters are
 independent (most of the QC filters; QC flags are interpreted
-independently on their order) or additive (*wresid* and *interdep*
-filters; they serve as flag corrections and thus the outcome depends on
-their position within the QC workflow).
+independently on their order as maximum value is taken) or additive
+(*wresid* and *interdep* filters; they serve as flag corrections and
+thus the outcome depends on their position within the QC workflow).
 
 <p align="center">
 
@@ -249,9 +256,7 @@ their position within the QC workflow).
 ### Flagging scheme
 
 - flag 0 – high quality
-
 - flag 1 – minor issues
-
 - flag 2 – major issues
 
 Due to the strict testing withing the QC workflow, both flag 0 and flag
@@ -319,8 +324,8 @@ extended period), user can provide additional columns (“max_records”,
 “used_rotation”, “used_IRGA”) by `label_periods()` to specify these
 properties for each averaging period (see relevant function help files:
 `?extract_QC`, `?interdep`, `?label_periods`). For the columns to be
-recognized, respective changes need to be made also in QC workflow
-settings (see the description there).
+recognized, respective changes need to be made also in QC workflow (see
+the description there).
 
 ## Naming strategy with the EC workflow
 
@@ -422,21 +427,21 @@ website](https://bgc.iwww.mpg.de/5624929/Output-Format).
 
 ## Manual QC guide
 
-Theoretically, manual QC is introducing subjectivity to the workflow and
-should be avoided. However, in practice, certain events can occur that
-might be difficult to screen based on auxiliary data or the tests are
-not sensitive enough to capture them. It should be noted that data not
-falling within the expected range might represent interesting rare
-phenomena and should be carefully investigated before manual removal.
-The screening typically depends on the user experience with the site,
-considering meteo conditions and phenology. Examples of manually
-excluded half-hours could be those affected by precipitation, strong
-advection and unexpected technical issues. Neighbors of outlying values
-or isolated points can be good candidates for exclusion as they might
-have escaped the automated screening. Change of weather fronts can lead
-to unexpected energy fluxes that however reflect real conditions. In
-these conditions it could depend on the research question whether such
-cases should be excluded.
+Theoretically, manual QC using `check_manually()` is introducing
+subjectivity to the workflow and should be avoided. However, in
+practice, certain events can occur that might be difficult to screen
+based on auxiliary data or the tests are not sensitive enough to capture
+them. It should be noted that data not falling within the expected range
+might represent interesting rare phenomena and should be carefully
+investigated before manual removal. The screening typically depends on
+the user experience with the site, considering meteo conditions and
+phenology. Examples of manually excluded half-hours could be those
+affected by precipitation, strong advection and unexpected technical
+issues. Neighbors of outlying values or isolated points can be good
+candidates for exclusion as they might have escaped the automated
+screening. Change of weather fronts can lead to unexpected energy fluxes
+that however reflect real conditions. In these conditions it could
+depend on the research question whether such cases should be excluded.
 
 ## Abbreviations
 

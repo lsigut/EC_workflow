@@ -37,7 +37,7 @@ if (packageVersion("openeddy") < package_version("0.0.0.9009"))
 ### Provide metadata and set file paths and arguments ==========================
 
 # Load the site-year settings file
-settings_file <- list.files(pattern = "settings.R", full.names = TRUE)
+settings_file <- list.files(pattern = "settings", full.names = TRUE)
 source(settings_file)
 
 # Timestamp of the computation

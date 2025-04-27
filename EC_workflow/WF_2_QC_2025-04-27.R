@@ -25,7 +25,8 @@ setwd(dirname(rstudioapi::getActiveDocumentContext()$path))
 ### Install and load required packages and functions ===========================
 
 # Load eddy covariance workflow utility functions
-source("utilities.R")
+utilities_file <- list.files(pattern = "utilities", full.names = TRUE)
+source(utilities_file)
 
 # Attach packages from GitHub
 # - you might need to have RTools for Windows machine to install openeddy:

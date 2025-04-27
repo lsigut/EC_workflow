@@ -257,7 +257,6 @@ for (i in seq_along(means)) {
     paste0("days ", agg_periods[i]), 2)
 }
 
-
 # Combine summaries to a single data frame per interval (all in one list)
 # and round and save the results
 summaries <- vector("list", length(means))

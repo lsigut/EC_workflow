@@ -35,7 +35,7 @@ source(utilities_file)
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-packages <- c("tibble", "ggplot2", "gridExtra", "reshape2")
+packages <- c("tibble", "dplyr", "ggplot2", "gridExtra", "reshape2")
 invisible(lapply(packages, attach_pkg))
 
 # Check if openeddy version conforms to requirements

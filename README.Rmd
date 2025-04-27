@@ -52,7 +52,7 @@ EC workflow]):
 
 | Recommended setup                        | Minimum setup |
 |:-----------------------------------------|:--------------|
-| GR, PAR, Rn, Tair, Tsoil, RH (or VPD), P | GR, Tair      |
+| GR, PAR, Rn, Tair, Tsoil, VPD (or RH), P | GR, Tair      |
 
 Gaps in meteorological data are allowed (except for PAR needed for
 day/night data separation in `despikeLF()`), but `REddyProc` gap filling
@@ -124,7 +124,7 @@ You can compare your results with those of `KRP16 - processed.zip` at
 [Zenodo](https://doi.org/10.5281/zenodo.6631498). Notice that in order
 to obtain identical results, you would need to copy the subjective
 manual screening done by site PI located at
-`./Level 2/Quality checking/KRP16_manual_QC.csv`.
+`.\level_2\quality_checking\KRP16_manual_QC.csv`.
 
 ## Description
 
@@ -150,21 +150,21 @@ processing chain consisting of four stages:
     increasing EC measurement height. Computation of storage flux from
     profile measurements is not in the scope of `openeddy`. Export
     documentation of applied QC and produce the outputs needed in next
-    steps. `QC` workflow produces files at `.\Level 2\Quality checking\`
-    and `.\Level 2\Input for gap-filling\` folders.
+    steps. `QC` workflow produces files at `.\level_2\quality_checking\`
+    and `.\level_2\input_for_gf\` folders.
 
 3.  **Gap filling and flux partitioning:** use `REddyProc` to estimate
     uStar threshold, apply uStar filtering, gap fill (H, LE, NEE) and
     partition (NEE) fluxes. Use `openeddy` to visualize H, LE and NEE
     fluxes. The setup allows to change and document some processing
     options in an organized way. `GF_&_FP` workflow produces files at
-    `.\Level 3\Gap-filling\REddyProc\`.
+    `.\level_3\gap_filling\`.
 
 4.  **Summary:** visualize processed data, convert units and aggregate
     results to daily, weekly, monthly and yearly timescales. A limited
     amount of computed parameters is also produced, including different
     uncertainty estimates. `Summary` workflow produces files at
-    `.\Level 3\Summary\REddyProc\`.
+    `.\level_3\summary\`.
 
 The EC workflow assumes certain folder structure for each site-year that
 makes data handling more effective. The folder structure can be created
@@ -173,7 +173,7 @@ using `structure_eddy()` with following content:
 ```{r echo=FALSE, message=FALSE}
 library(openeddy)
 library(fs)
-zz <- structure_eddy("site_year", create_dirs = TRUE)
+zz <- make_paths("site_year", create_dirs = TRUE)
 fs::dir_tree("site_year")
 unlink("site_year", recursive = TRUE)
 ```
@@ -188,6 +188,80 @@ The complete processing chain in the context of above folder structure
 can be summarized as:
 
 ![](processing_chain.jpg)
+
+## QC principles
+
+Quality assurance (QA) is always preferred to QC. If faulty instrument
+producing spurious measurements can be exchanged, repaired or
+calibrated, it is always preferred to simply flagging and removing
+affected period. This requires frequent check of instruments, timely
+maintenance, well educated technical support and established service
+routine or calendar. Therefore QC cannot substitute neglected QA and the
+concept "garbage in, garbage out" applies also for EC workflow. QA and
+QC can be understood also as a learning process described in the
+following diagram.
+
+<p align="center">
+
+<img src="qa_and_qc.jpg" width="300"/>
+
+</p>
+
+In `openeddy`, EddyPro software serves as a way of input data
+standardization. Data frames have defined column names and units with
+conserved data formatting. This property is used to easily read the
+expected columns, thus the typical input data structure of most
+functions is a data frame. Quality control consists of two phases:
+
+1.  obtaining QC filters (filters must be defined and columns containing
+    QC flags saved to a data frame)
+
+2.  applying QC filters (either directly by removing flux values or by
+    combining all applied filters and assuring that data will be
+    interpreted in respect to the combined QC flags).
+
+This approach allows to evaluate a complete set of QC filters and select
+for application only those with the best flagging efficiency (trade-off
+between the count of removed spurious records and the amount of
+available records after the QC filter application). Note that such
+selected QC scheme can depend also on the type of following analysis.
+E.g. if the data will be used to compute annual budgets, outlying values
+would bias the look-up table statistics when filling gaps and thus
+should be removed. On the other hand, if the focus of following analysis
+are exceptional fluxes, outlying values should be kept.
+
+<p align="center">
+
+<img src="qc_application.jpg" width="400"/>
+
+</p>
+
+The application of QC filters depends on whether the applied filters are
+independent (most of the QC filters; QC flags are interpreted
+independently on their order) or additive (*wresid* and *interdep*
+filters; they serve as flag corrections and thus the outcome depends on
+their position within the QC workflow).
+
+<p align="center">
+
+<img src="combn_qc.jpg" width="400"/>
+
+</p>
+
+### Flagging scheme
+
+-   flag 0 – high quality
+
+-   flag 1 – minor issues
+
+-   flag 2 – major issues
+
+Due to the strict testing withing the QC workflow, both flag 0 and flag
+1 data are suggested to be used for fundamental research. Only flag 2
+(low data quality) is meant to be discarded. Note that if QC filter A
+and filter B both flag 25% of data with flag 2, the fraction of excluded
+data is typically lower than 50%. This is because the averaging periods
+with major issues are often flagged by multiple filters.
 
 ## ROI boundary
 
@@ -207,7 +281,11 @@ properties:
 
 ### ROI boundary example
 
+<p align="center">
+
 ![](ROI%20boundary%20example.jpg)
+
+</p>
 
 In this simplified case ROI boundary would be specified as:
 
@@ -227,6 +305,24 @@ c(150, 200, 250, 300)
 Realistic representation of ROI boundary can look e.g. like this:
 
 ![](CZ-Krp_fetch.png)
+
+## Change of EC system or EddyPro settings
+
+Functions `extract_QC(..., filters = c("missfrac", "wresid"))` and
+`interdep()` require information about EC or EddyPro setup. For
+*missfrac* filter it is the number of records in averaging period (e.g.
+36 000 for half-hourly period with 20 Hz measurements), for *wresid* it
+is the coordinate rotation type (double or planar fit rotation), for
+*interdep* it is the infrared gas analyzer type (either open path or
+(en)closed path). These specifications can be provided as single values
+if the properties did not change throughout the data set. If the
+properties changed (typically when merging multiple EddyPro files from
+extended period), user can provide additional columns ("max_records",
+"used_rotation", "used_IRGA") by `label_periods()` to specify these
+properties for each averaging period (see relevant function help files:
+`?extract_QC`, `?interdep`, `?label_periods`). For the columns to be
+recognized, respective changes need to be made also in QC workflow
+settings (see the description there).
 
 ## Naming strategy with the EC workflow
 
@@ -348,6 +444,7 @@ cases should be excluded.
 
 -   EC: Eddy Covariance
 -   QC: Quality Control
+-   QA: Quality Assurance
 -   SA: Sonic Anemometer
 -   GA: Gas Analyzer
 -   Tau: Momentum flux [kg m-1 s-2]

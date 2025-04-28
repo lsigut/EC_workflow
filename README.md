@@ -191,7 +191,7 @@ using `make_paths()` with following content:
 The complete processing chain in the context of above folder structure
 can be summarized as:
 
-![](processing_chain.jpg)
+![](Processing_chain.jpg)
 
 ## QC principles
 

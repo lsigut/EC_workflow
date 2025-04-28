@@ -249,7 +249,7 @@ thus the outcome depends on their position within the QC workflow).
 
 <p align="center">
 
-<img src="combn_qc.jpg" width="400"/>
+<img src="combn_QC.jpg" width="400"/>
 
 </p>
 

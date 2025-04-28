@@ -471,7 +471,7 @@ write_eddy(save_data,
              paste0(siteyear, "_forGF_QC_full_output_", Tstamp, ".csv")))
 
 # Choose the most important variables to later combine with gap-filling results
-# - essential_vars_QC is an object defined within openeddy
+# - essential_vars_QC is an object defined within WF settings
 # - use only those that are available
 essentials <- choose_avail(essential_vars_QC, names(save_data))
 

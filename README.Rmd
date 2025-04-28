@@ -100,7 +100,7 @@ filling of such fluxes).
 To run EC workflow for the example site-year `KRP16`:
 
 Download `KRP16 - before processing.zip` from
-[Zenodo](https://doi.org/10.5281/zenodo.7828751) and unzip. Run workflow
+[Zenodo](https://doi.org/10.5281/zenodo.1442530) and unzip. Run workflow
 files in specified order according to instructions there:
 
 1.  `WF_1_data_preparation`: formatting and merging inputs.
@@ -127,7 +127,7 @@ QC is finalized and saved, changing to `interactive = FALSE` in
 `settings` allows to reproduce the results by sourcing.
 
 You can compare your results with those of `KRP16 - processed.zip` at
-[Zenodo](https://doi.org/10.5281/zenodo.6631498). Notice that in order
+[Zenodo](https://doi.org/10.5281/zenodo.1442530). Notice that in order
 to obtain identical results, you would need to copy the subjective
 manual screening done by site PI located at
 `.\level_2\quality_checking\KRP16_manual_QC.csv`.

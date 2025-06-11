@@ -6,8 +6,8 @@
 -   improved efficiency of folder structure and command line support of
     folder names by the implementation of make_paths()
 -   automated loading of inputs using make_paths()
--   Meteo data is expected as a single file with head and units that can be read
-    by read_eddy() 
+-   Meteo data is expected as a single file with a header and units that can be 
+    read by read_eddy() 
 -   settings for all workflow files were extracted to a single file
     (siteyear_settings.R) for easier workflow updates and setup editing
 -   README: updated folder structure description and graphics

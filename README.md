@@ -374,7 +374,9 @@ They specify which flux is affected by given QC column:
 They specify which QC test/filter was applied to get the QC flags:
 
 - \_SSITC: steady state test and test of integral turbulence
-  characteristics.
+  characteristics. This is a typical QC output of `EddyPro` (originally
+  named qc_Tau, qc_H, qc_LE, qc_co2_flux) and renamed by `correct()`
+  during `WF_1_data_preparation` step.
 - \_spikesHF: check of [high frequency data spike
   percentage](https://www.licor.com/env/support/EddyPro/topics/despiking-raw-statistical-screening.html#Despiking)
   in averaging period against thresholds.

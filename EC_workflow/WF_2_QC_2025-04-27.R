@@ -152,6 +152,13 @@ save_flux_plots(data, "SSITC", siteyear, "%s_precheck", Tstamp, paths$precheck,
 # - recommended only for short canopy sites with setting rotation == "double"
 # - typically excessive flagging for sites with rotation == "planar fit"
 # - needs further testing
+
+# Change of EC system or EddyPro settings
+# - see related section at https://github.com/lsigut/EC_workflow
+# - see related help files: ?extract_QC, ?interdep, ?label_periods
+# - use label_periods() to save expected variables to data
+# - use extract_QC() and/or interdep() arguments to utilize them
+
 QC <- extract_QC(data, rotation = rotation_type)
 summary_QC(QC, names(QC))
 

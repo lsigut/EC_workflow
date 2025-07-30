@@ -106,11 +106,6 @@ openeddy::varnames(M) <- vars
 # merge_eddy() assures that timestamp is complete and has defined range
 M <- merge_eddy(list(M), start = start, end = end)
 
-# Correct units
-# - not included in correct() as it is Czechglobe specific formatting
-# - it should not impact sites with other formatting
-openeddy::units(M) <- gsub("st. ", "deg", openeddy::units(M))
-
 ### Load and format EddyPro full output ========================================
 
 # Load the EddyPro files (untouched originals) and bind them together

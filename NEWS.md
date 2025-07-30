@@ -1,13 +1,16 @@
 ## EC_workflow 2025-04-27
 
+-   bug fix: selection of variables for WF_4 aggregation in settings now
+    follows literal list - previous definition had not available
+    dependencies (2025-07-30)
 -   all workflow files moved to common folder EC_workflow
--   site-year prefix is now kept only for settings file as workflow files should
-    not need editing
+-   site-year prefix is now kept only for settings file as workflow
+    files should not need editing
 -   improved efficiency of folder structure and command line support of
     folder names by the implementation of make_paths()
 -   automated loading of inputs using make_paths()
--   Meteo data is expected as a single file with a header and units that can be 
-    read by read_eddy() 
+-   Meteo data is expected as a single file with a header and units that
+    can be read by read_eddy()
 -   settings for all workflow files were extracted to a single file
     (siteyear_settings.R) for easier workflow updates and setup editing
 -   README: updated folder structure description and graphics

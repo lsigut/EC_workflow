@@ -28,7 +28,8 @@ source(utilities_file)
 attach_pkg("openeddy", github = "lsigut/openeddy")
 
 # Attach packages from CRAN
-attach_pkg("openair", "tibble")
+packages <- c("openair", "tibble")
+invisible(lapply(packages, attach_pkg))
 
 # Check if openeddy version conforms to requirements
 if (packageVersion("openeddy") < package_version("0.0.0.9009"))
@@ -74,7 +75,7 @@ sum <- choose_avail(sum, names(data))
 err_agg <- choose_avail(err_agg, names(data))
 
 # Specify variables for plots at half-hour resolution
-hh_vars <- grep("[^c]$", unique(c(mean, sum, err_agg)), value = TRUE)
+hh_vars <- choose_avail(hh_vars, names(data))
 
 # Print half-hourly results to pdf and png
 pdf(file.path(

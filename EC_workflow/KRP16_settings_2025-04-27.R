@@ -182,9 +182,13 @@ mean <- c("Tair", "Tsoil", "RH", "VPD", "GR", "Rn", "PAR", "GWL", "SWC", "G",
           "H_f", "H_fqc", "LE_f", "LE_fqc", "ET_f", "ET_fqc", 
           "NEE_uStar_f", "NEE_uStar_fqc", "GPP_uStar_f", "GPP_DT_uStar", 
           "Reco_uStar", "Reco_DT_uStar")
-sum <- c("P", "GR", "Rn", "PAR", "G", "H_f", "LE_f", "ET_f", 
-         grep("(NEE|GPP).+f$", names(data), value = TRUE),
-         grep("GPP_DT.+[^D]$", names(data), value = TRUE),
-         grep("Reco.+[^D]$", names(data), value = TRUE))
-err_agg <- grep("(^H|^LE|^ET|^NEE|^Reco|^GPP).*(sd|SD)$", names(data), 
-                value = TRUE)
+sum <- c("P", "GR", "Rn", "PAR", "G", "H_f", "LE_f", "ET_f", "NEE_uStar_f", 
+         "GPP_uStar_f", "GPP_DT_uStar", "Reco_uStar", "Reco_DT_uStar")
+err_agg <- c("H_fsd", "LE_fsd", "NEE_uStar_fsd", "ET_fsd", "Reco_DT_uStar_SD",
+             "GPP_DT_uStar_SD")
+
+# Specify variables for plots at half-hour resolution
+# - all variables defined above except quality control ("*_fqc" suffix)
+hh_vars <- grep("[^c]$", unique(c(mean, sum, err_agg)), value = TRUE)
+
+# EOF

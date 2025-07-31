@@ -108,6 +108,7 @@ boundary <-
 # Precheck variables
 # - set of variables typically available in EddyPro full output that can be
 #   useful for preliminary check before quality control procedure
+# - typically either LI-7200 or LI-7500-related variables will be available
 # - the selected variables will be plotted (no further dependencies)
 precheck_vars <- c(
   "u_rot", "v_rot", "w_unrot", "w_rot",
@@ -122,7 +123,8 @@ precheck_vars <- c(
   "co2_mixing_ratio", "h2o_mixing_ratio",
   "co2_time_lag", "h2o_time_lag",
   "x_peak", "x_70perc",
-  "mean_value_RSSI_LI_7200", "co2_signal_strength_7200_mean",
+  "mean_value_RSSI_LI_7200", "mean_value_RSSI_LI_7500", 
+  "co2_signal_strength_7200_mean", "co2_signal_strength_7500_mean",
   "h2o_signal_strength_7200_mean", "flowrate_mean")
 
 # Quality Control Essential Variables

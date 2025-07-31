@@ -3,6 +3,7 @@
 -   bug fix: selection of variables for WF_4 aggregation in settings now
     follows literal list - previous definition had not available
     dependencies (2025-07-30)
+-   add LI-7500-related precheck variables to settings (2025-07-31) 
 -   all workflow files moved to common folder EC_workflow
 -   site-year prefix is now kept only for settings file as workflow
     files should not need editing
@@ -16,6 +17,7 @@
 -   README: updated folder structure description and graphics
 -   README: new sections QC principles and Flagging scheme
 -   README: new section Change of EC system or EddyPro settings
+-   README: add Resources section
 -   allow flexibility of setting processing period (start and end
     variables instead of year)
 -   automated setting of optimal TempRange in nighttime partitioning

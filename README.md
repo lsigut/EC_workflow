@@ -462,6 +462,14 @@ depend on the research question whether such cases should be excluded.
 - h2o: H2O concentration \[mmol mol-1\]
 - co2: CO2 concentration \[umol mol-1\]
 
+## Resources
+
+- summary of `openeddy` and related resources is available as a poster:
+  <https://doi.org/10.5281/zenodo.8159040>
+
+- presentation with `openeddy` introduction and comments on EC workflow:
+  <https://doi.org/10.5281/zenodo.16631376>
+
 ## References
 
 Publication describing `openeddy` is not yet available. When describing
